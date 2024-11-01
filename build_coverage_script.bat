@@ -1,0 +1,3 @@
+D:\CLion2024.2.2\bin\cmake\win\x64\bin\cmake.exe -DCMAKE_MAKE_PROGRAM=D:/CLion2024.2.2/bin/ninja/win/x64/ninja.exe -DCMAKE_CXX_FLAGS=--coverage -DCMAKE_C_FLAGS=--coverage -G Ninja -S D:\BSUIR\course2\PPOIS\pizzeria_v2 -B D:\BSUIR\course2\PPOIS\pizzeria_v2\cmake-build-debug-coverage
+
+D:\CLion2024.2.2\bin\cmake\win\x64\bin\cmake.exe --build D:\BSUIR\course2\PPOIS\pizzeria_v2\cmake-build-debug-coverage --target Google_test_run -j 14
