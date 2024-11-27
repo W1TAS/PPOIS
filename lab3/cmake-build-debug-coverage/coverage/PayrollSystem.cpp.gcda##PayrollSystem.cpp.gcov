@@ -1,0 +1,19 @@
+        -:    0:Source:D:/BSUIR/course2/PPOIS/lab3/salary_lib/PayrollSystem.cpp
+        -:    0:Graph:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\salary_lib\CMakeFiles\salary_lib.dir\PayrollSystem.cpp.gcno
+        -:    0:Data:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\salary_lib\CMakeFiles\salary_lib.dir\PayrollSystem.cpp.gcda
+        -:    0:Runs:1
+        -:    1:#include "PayrollSystem.h"
+        -:    2:#include <iostream>
+        -:    3:
+        2:    4:PayrollSystem::PayrollSystem(Company& company) : company(company) {}
+        -:    5:
+        1:    6:void PayrollSystem::initialize() {
+        -:    7:    // Инициализация системы расчёта зарплаты
+        1:    8:    std::cout << "Payroll system initialized for company: " << company.getName() << std::endl;
+        1:    9:}
+        -:   10:
+        1:   11:void PayrollSystem::generateReport() const {
+        -:   12:    // Генерация отчёта по зарплатам
+        1:   13:    std::cout << "Generating payroll report..." << std::endl;
+        1:   14:    std::cout << "Total salary: $" << company.calculateTotalSalary() << std::endl;
+        1:   15:}

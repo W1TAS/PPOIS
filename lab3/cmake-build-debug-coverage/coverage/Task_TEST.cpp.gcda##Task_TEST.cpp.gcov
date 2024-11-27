@@ -1,0 +1,109 @@
+        -:    0:Source:D:/BSUIR/course2/PPOIS/lab3/Google_tests/Task_TEST.cpp
+        -:    0:Graph:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\Google_tests\CMakeFiles\Google_Tests_run.dir\Task_TEST.cpp.gcno
+        -:    0:Data:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\Google_tests\CMakeFiles\Google_Tests_run.dir\Task_TEST.cpp.gcda
+        -:    0:Runs:1
+        -:    1:#include <gtest/gtest.h>
+        -:    2:#include "Task.h"
+        -:    3:
+        4:    4:TEST(TaskTest, ConstructorTest) {
+        3:    5:    Task task("Complete project documentation", "2024-12-01");
+        -:    6:
+       1*:    7:    EXPECT_EQ(task.getDescription(), "Complete project documentation");
+       1*:    8:    EXPECT_EQ(task.getDeadline(), "2024-12-01");
+       1*:    9:    EXPECT_FALSE(task.isCompleted());
+        1:   10:}
+------------------
+_ZN29TaskTest_ConstructorTest_TestC1Ev:
+        1:    4:TEST(TaskTest, ConstructorTest) {
+------------------
+_ZN29TaskTest_ConstructorTest_TestD0Ev:
+        1:    4:TEST(TaskTest, ConstructorTest) {
+------------------
+_ZN29TaskTest_ConstructorTest_TestD1Ev:
+        1:    4:TEST(TaskTest, ConstructorTest) {
+------------------
+_ZN29TaskTest_ConstructorTest_Test8TestBodyEv:
+        1:    4:TEST(TaskTest, ConstructorTest) {
+        3:    5:    Task task("Complete project documentation", "2024-12-01");
+        -:    6:
+       1*:    7:    EXPECT_EQ(task.getDescription(), "Complete project documentation");
+       1*:    8:    EXPECT_EQ(task.getDeadline(), "2024-12-01");
+       1*:    9:    EXPECT_FALSE(task.isCompleted());
+        1:   10:}
+------------------
+        -:   11:
+        4:   12:TEST(TaskTest, SetDescriptionTest) {
+        4:   13:    Task task("Complete project documentation", "2024-12-01");
+        1:   14:    task.setDescription("Review project documentation");
+        -:   15:
+       1*:   16:    EXPECT_EQ(task.getDescription(), "Review project documentation");
+        1:   17:}
+------------------
+_ZN32TaskTest_SetDescriptionTest_TestC1Ev:
+        1:   12:TEST(TaskTest, SetDescriptionTest) {
+------------------
+_ZN32TaskTest_SetDescriptionTest_TestD0Ev:
+        1:   12:TEST(TaskTest, SetDescriptionTest) {
+------------------
+_ZN32TaskTest_SetDescriptionTest_TestD1Ev:
+        1:   12:TEST(TaskTest, SetDescriptionTest) {
+------------------
+_ZN32TaskTest_SetDescriptionTest_Test8TestBodyEv:
+        1:   12:TEST(TaskTest, SetDescriptionTest) {
+        4:   13:    Task task("Complete project documentation", "2024-12-01");
+        1:   14:    task.setDescription("Review project documentation");
+        -:   15:
+       1*:   16:    EXPECT_EQ(task.getDescription(), "Review project documentation");
+        1:   17:}
+------------------
+        -:   18:
+        4:   19:TEST(TaskTest, SetDeadlineTest) {
+        4:   20:    Task task("Complete project documentation", "2024-12-01");
+        1:   21:    task.setDeadline("2024-12-05");
+        -:   22:
+       1*:   23:    EXPECT_EQ(task.getDeadline(), "2024-12-05");
+        1:   24:}
+------------------
+_ZN29TaskTest_SetDeadlineTest_TestC1Ev:
+        1:   19:TEST(TaskTest, SetDeadlineTest) {
+------------------
+_ZN29TaskTest_SetDeadlineTest_TestD0Ev:
+        1:   19:TEST(TaskTest, SetDeadlineTest) {
+------------------
+_ZN29TaskTest_SetDeadlineTest_TestD1Ev:
+        1:   19:TEST(TaskTest, SetDeadlineTest) {
+------------------
+_ZN29TaskTest_SetDeadlineTest_Test8TestBodyEv:
+        1:   19:TEST(TaskTest, SetDeadlineTest) {
+        4:   20:    Task task("Complete project documentation", "2024-12-01");
+        1:   21:    task.setDeadline("2024-12-05");
+        -:   22:
+       1*:   23:    EXPECT_EQ(task.getDeadline(), "2024-12-05");
+        1:   24:}
+------------------
+        -:   25:
+        4:   26:TEST(TaskTest, SetCompletedTest) {
+        3:   27:    Task task("Complete project documentation", "2024-12-01");
+        1:   28:    task.setCompleted(true);
+        -:   29:
+       1*:   30:    EXPECT_TRUE(task.isCompleted());
+        1:   31:}
+------------------
+_ZN30TaskTest_SetCompletedTest_TestC1Ev:
+        1:   26:TEST(TaskTest, SetCompletedTest) {
+------------------
+_ZN30TaskTest_SetCompletedTest_TestD0Ev:
+        1:   26:TEST(TaskTest, SetCompletedTest) {
+------------------
+_ZN30TaskTest_SetCompletedTest_TestD1Ev:
+        1:   26:TEST(TaskTest, SetCompletedTest) {
+------------------
+_ZN30TaskTest_SetCompletedTest_Test8TestBodyEv:
+        1:   26:TEST(TaskTest, SetCompletedTest) {
+        3:   27:    Task task("Complete project documentation", "2024-12-01");
+        1:   28:    task.setCompleted(true);
+        -:   29:
+       1*:   30:    EXPECT_TRUE(task.isCompleted());
+        1:   31:}
+------------------
+        -:   32:

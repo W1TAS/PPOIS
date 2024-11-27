@@ -1,0 +1,21 @@
+        -:    0:Source:D:/BSUIR/course2/PPOIS/lab3/salary_lib/Role.cpp
+        -:    0:Graph:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\salary_lib\CMakeFiles\salary_lib.dir\Role.cpp.gcno
+        -:    0:Data:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\salary_lib\CMakeFiles\salary_lib.dir\Role.cpp.gcda
+        -:    0:Runs:1
+        -:    1:#include "Role.h"
+        -:    2:
+        2:    3:Role::Role(const std::string& name, const std::string& permissions)
+        2:    4:    : name(name), permissions(permissions) {}
+        -:    5:
+        1:    6:void Role::updateRole(const std::string& name, const std::string& permissions) {
+        1:    7:    this->name = name;
+        1:    8:    this->permissions = permissions;
+        1:    9:}
+        -:   10:
+        2:   11:std::string Role::getName() const {
+        2:   12:    return name;
+        -:   13:}
+        -:   14:
+        2:   15:std::string Role::getPermissions() const {
+        2:   16:    return permissions;
+        -:   17:}

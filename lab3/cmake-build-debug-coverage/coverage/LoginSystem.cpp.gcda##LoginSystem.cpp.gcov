@@ -1,0 +1,23 @@
+        -:    0:Source:D:/BSUIR/course2/PPOIS/lab3/salary_lib/LoginSystem.cpp
+        -:    0:Graph:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\salary_lib\CMakeFiles\salary_lib.dir\LoginSystem.cpp.gcno
+        -:    0:Data:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\salary_lib\CMakeFiles\salary_lib.dir\LoginSystem.cpp.gcda
+        -:    0:Runs:1
+        -:    1:#include "LoginSystem.h"
+        -:    2:#include <stdexcept> // Включение заголовка
+        -:    3:
+        2:    4:LoginSystem::LoginSystem() {}
+        -:    5:
+        3:    6:bool LoginSystem::login(const std::string& username, const std::string& password) {
+        3:    7:    auto it = userDatabase.find(username);
+        3:    8:    if (it != userDatabase.end() && it->second == password) {
+        1:    9:        return true;
+        -:   10:    }
+        2:   11:    return false;
+        -:   12:}
+        -:   13:
+        3:   14:void LoginSystem::registerUser(const std::string& username, const std::string& password) {
+        3:   15:    if (userDatabase.find(username) != userDatabase.end()) {
+        1:   16:        throw std::invalid_argument("User with this login already exists");
+        -:   17:    }
+        2:   18:    userDatabase[username] = password;
+        2:   19:}

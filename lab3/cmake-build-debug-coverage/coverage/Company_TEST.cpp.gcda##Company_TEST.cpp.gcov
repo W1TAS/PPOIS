@@ -1,0 +1,129 @@
+        -:    0:Source:D:/BSUIR/course2/PPOIS/lab3/Google_tests/Company_TEST.cpp
+        -:    0:Graph:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\Google_tests\CMakeFiles\Google_Tests_run.dir\Company_TEST.cpp.gcno
+        -:    0:Data:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\Google_tests\CMakeFiles\Google_Tests_run.dir\Company_TEST.cpp.gcda
+        -:    0:Runs:1
+        -:    1:#include <gtest/gtest.h>
+        -:    2:#include "Company.h"
+        -:    3:#include "Department.h"
+        -:    4:#include "Employee.h"
+        -:    5:#include "Manager.h"
+        -:    6:
+        4:    7:TEST(CompanyTest, ConstructorTest) {
+        1:    8:    Company company("Tech Corp");
+        -:    9:
+       1*:   10:    EXPECT_EQ(company.getName(), "Tech Corp");
+        1:   11:}
+------------------
+_ZN32CompanyTest_ConstructorTest_TestC1Ev:
+        1:    7:TEST(CompanyTest, ConstructorTest) {
+------------------
+_ZN32CompanyTest_ConstructorTest_TestD0Ev:
+        1:    7:TEST(CompanyTest, ConstructorTest) {
+------------------
+_ZN32CompanyTest_ConstructorTest_TestD1Ev:
+        1:    7:TEST(CompanyTest, ConstructorTest) {
+------------------
+_ZN32CompanyTest_ConstructorTest_Test8TestBodyEv:
+        1:    7:TEST(CompanyTest, ConstructorTest) {
+        1:    8:    Company company("Tech Corp");
+        -:    9:
+       1*:   10:    EXPECT_EQ(company.getName(), "Tech Corp");
+        1:   11:}
+------------------
+        -:   12:
+        4:   13:TEST(CompanyTest, AddAndRemoveDepartmentTest) {
+        2:   14:    Company company("Tech Corp");
+        2:   15:    Department dept1("IT");
+        1:   16:    Department dept2("HR");
+        -:   17:
+        1:   18:    company.addDepartment(dept1);
+        1:   19:    company.addDepartment(dept2);
+       1*:   20:    EXPECT_EQ(company.getDepartments().size(), 2);
+        -:   21:
+        1:   22:    company.removeDepartment("IT");
+       1*:   23:    EXPECT_EQ(company.getDepartments().size(), 1);
+       1*:   24:    EXPECT_EQ(company.getDepartments().at(0).getName(), "HR");
+        1:   25:}
+------------------
+_ZN43CompanyTest_AddAndRemoveDepartmentTest_TestC1Ev:
+        1:   13:TEST(CompanyTest, AddAndRemoveDepartmentTest) {
+------------------
+_ZN43CompanyTest_AddAndRemoveDepartmentTest_TestD0Ev:
+        1:   13:TEST(CompanyTest, AddAndRemoveDepartmentTest) {
+------------------
+_ZN43CompanyTest_AddAndRemoveDepartmentTest_TestD1Ev:
+        1:   13:TEST(CompanyTest, AddAndRemoveDepartmentTest) {
+------------------
+_ZN43CompanyTest_AddAndRemoveDepartmentTest_Test8TestBodyEv:
+        1:   13:TEST(CompanyTest, AddAndRemoveDepartmentTest) {
+        2:   14:    Company company("Tech Corp");
+        2:   15:    Department dept1("IT");
+        1:   16:    Department dept2("HR");
+        -:   17:
+        1:   18:    company.addDepartment(dept1);
+        1:   19:    company.addDepartment(dept2);
+       1*:   20:    EXPECT_EQ(company.getDepartments().size(), 2);
+        -:   21:
+        1:   22:    company.removeDepartment("IT");
+       1*:   23:    EXPECT_EQ(company.getDepartments().size(), 1);
+       1*:   24:    EXPECT_EQ(company.getDepartments().at(0).getName(), "HR");
+        1:   25:}
+------------------
+        -:   26:
+        4:   27:TEST(CompanyTest, CalculateTotalSalaryTest) {
+        2:   28:    Company company("Tech Corp");
+        2:   29:    Department dept1("IT");
+        -:   30:
+       14:   31:    Employee emp1(1, "John", "Doe", "Developer", 50, ContactInfo("123-456-7890", "john.doe@example.com"), Address("Minsk", "Lenina", 10));
+       14:   32:    Employee emp2(2, "Jane", "Smith", "Designer", 45, ContactInfo("098-765-4321", "jane.smith@example.com"), Address("Minsk", "Pushkina", 15));
+       13:   33:    Manager mgr1(3, "Alice", "Brown", "Manager", 60, 500, ContactInfo("111-222-3333", "alice.brown@example.com"), Address("Minsk", "Gorkogo", 20));
+        -:   34:
+        1:   35:    emp1.updateHoursWorked(160);
+        1:   36:    emp2.updateHoursWorked(160);
+        1:   37:    mgr1.updateHoursWorked(160);
+        -:   38:
+        1:   39:    dept1.addEmployee(&emp1);
+        1:   40:    dept1.addEmployee(&emp2);
+        1:   41:    dept1.addEmployee(&mgr1);
+        -:   42:
+        1:   43:    company.addDepartment(dept1);
+        -:   44:
+       1*:   45:    EXPECT_DOUBLE_EQ(company.calculateTotalSalary(), emp1.calculateSalary() + emp2.calculateSalary() + mgr1.calculateSalary());
+        1:   46:}
+------------------
+_ZN41CompanyTest_CalculateTotalSalaryTest_TestC1Ev:
+        1:   27:TEST(CompanyTest, CalculateTotalSalaryTest) {
+------------------
+_ZN41CompanyTest_CalculateTotalSalaryTest_TestD0Ev:
+        1:   27:TEST(CompanyTest, CalculateTotalSalaryTest) {
+------------------
+_ZN41CompanyTest_CalculateTotalSalaryTest_TestD1Ev:
+        1:   27:TEST(CompanyTest, CalculateTotalSalaryTest) {
+------------------
+_ZN41CompanyTest_CalculateTotalSalaryTest_Test8TestBodyEv:
+        1:   27:TEST(CompanyTest, CalculateTotalSalaryTest) {
+        2:   28:    Company company("Tech Corp");
+        2:   29:    Department dept1("IT");
+        -:   30:
+       14:   31:    Employee emp1(1, "John", "Doe", "Developer", 50, ContactInfo("123-456-7890", "john.doe@example.com"), Address("Minsk", "Lenina", 10));
+       14:   32:    Employee emp2(2, "Jane", "Smith", "Designer", 45, ContactInfo("098-765-4321", "jane.smith@example.com"), Address("Minsk", "Pushkina", 15));
+       13:   33:    Manager mgr1(3, "Alice", "Brown", "Manager", 60, 500, ContactInfo("111-222-3333", "alice.brown@example.com"), Address("Minsk", "Gorkogo", 20));
+        -:   34:
+        1:   35:    emp1.updateHoursWorked(160);
+        1:   36:    emp2.updateHoursWorked(160);
+        1:   37:    mgr1.updateHoursWorked(160);
+        -:   38:
+        1:   39:    dept1.addEmployee(&emp1);
+        1:   40:    dept1.addEmployee(&emp2);
+        1:   41:    dept1.addEmployee(&mgr1);
+        -:   42:
+        1:   43:    company.addDepartment(dept1);
+        -:   44:
+       1*:   45:    EXPECT_DOUBLE_EQ(company.calculateTotalSalary(), emp1.calculateSalary() + emp2.calculateSalary() + mgr1.calculateSalary());
+        1:   46:}
+------------------
+        -:   47:
+        1:   48:int main(int argc, char **argv) {
+        1:   49:    ::testing::InitGoogleTest(&argc, argv);
+        1:   50:    return RUN_ALL_TESTS();
+        -:   51:}

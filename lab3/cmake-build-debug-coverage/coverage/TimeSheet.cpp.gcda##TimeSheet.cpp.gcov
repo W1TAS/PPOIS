@@ -1,0 +1,16 @@
+        -:    0:Source:D:/BSUIR/course2/PPOIS/lab3/salary_lib/TimeSheet.cpp
+        -:    0:Graph:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\salary_lib\CMakeFiles\salary_lib.dir\TimeSheet.cpp.gcno
+        -:    0:Data:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\salary_lib\CMakeFiles\salary_lib.dir\TimeSheet.cpp.gcda
+        -:    0:Runs:1
+        -:    1:#include "TimeSheet.h"
+        -:    2:
+        2:    3:TimeSheet::TimeSheet(Employee* employee, const std::string& date, int hours)
+        2:    4:    : employee(employee), date(date), hoursWorked(hours) {}
+        -:    5:
+        1:    6:void TimeSheet::fillTimeSheet(int hours) {
+        1:    7:    hoursWorked = hours;
+        1:    8:}
+        -:    9:
+        1:   10:Employee* TimeSheet::getEmployee() const { return employee; }
+        1:   11:std::string TimeSheet::getDate() const { return date; }
+        2:   12:int TimeSheet::getHoursWorked() const { return hoursWorked; }

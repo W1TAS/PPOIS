@@ -1,0 +1,60 @@
+        -:    0:Source:D:/BSUIR/course2/PPOIS/lab3/Google_tests/ContactInfo_TEST.cpp
+        -:    0:Graph:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\Google_tests\CMakeFiles\Google_Tests_run.dir\ContactInfo_TEST.cpp.gcno
+        -:    0:Data:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\Google_tests\CMakeFiles\Google_Tests_run.dir\ContactInfo_TEST.cpp.gcda
+        -:    0:Runs:1
+        -:    1:#include <gtest/gtest.h>
+        -:    2:#include "ContactInfo.h"
+        -:    3:
+        4:    4:TEST(ContactInfoTest, ConstructorTest) {
+        3:    5:    ContactInfo contact("123-456-7890", "john.doe@example.com");
+        -:    6:
+       1*:    7:    EXPECT_EQ(contact.getPhone(), "123-456-7890");
+       1*:    8:    EXPECT_EQ(contact.getEmail(), "john.doe@example.com");
+        1:    9:}
+------------------
+_ZN36ContactInfoTest_ConstructorTest_TestC1Ev:
+        1:    4:TEST(ContactInfoTest, ConstructorTest) {
+------------------
+_ZN36ContactInfoTest_ConstructorTest_TestD0Ev:
+        1:    4:TEST(ContactInfoTest, ConstructorTest) {
+------------------
+_ZN36ContactInfoTest_ConstructorTest_TestD1Ev:
+        1:    4:TEST(ContactInfoTest, ConstructorTest) {
+------------------
+_ZN36ContactInfoTest_ConstructorTest_Test8TestBodyEv:
+        1:    4:TEST(ContactInfoTest, ConstructorTest) {
+        3:    5:    ContactInfo contact("123-456-7890", "john.doe@example.com");
+        -:    6:
+       1*:    7:    EXPECT_EQ(contact.getPhone(), "123-456-7890");
+       1*:    8:    EXPECT_EQ(contact.getEmail(), "john.doe@example.com");
+        1:    9:}
+------------------
+        -:   10:
+        4:   11:TEST(ContactInfoTest, UpdateContactInfoTest) {
+        4:   12:    ContactInfo contact("123-456-7890", "john.doe@example.com");
+        3:   13:    contact.updateContactInfo("098-765-4321", "jane.doe@example.com");
+        -:   14:
+       1*:   15:    EXPECT_EQ(contact.getPhone(), "098-765-4321");
+       1*:   16:    EXPECT_EQ(contact.getEmail(), "jane.doe@example.com");
+        1:   17:}
+------------------
+_ZN42ContactInfoTest_UpdateContactInfoTest_TestC1Ev:
+        1:   11:TEST(ContactInfoTest, UpdateContactInfoTest) {
+------------------
+_ZN42ContactInfoTest_UpdateContactInfoTest_TestD0Ev:
+        1:   11:TEST(ContactInfoTest, UpdateContactInfoTest) {
+------------------
+_ZN42ContactInfoTest_UpdateContactInfoTest_TestD1Ev:
+        1:   11:TEST(ContactInfoTest, UpdateContactInfoTest) {
+------------------
+_ZN42ContactInfoTest_UpdateContactInfoTest_Test8TestBodyEv:
+        1:   11:TEST(ContactInfoTest, UpdateContactInfoTest) {
+        4:   12:    ContactInfo contact("123-456-7890", "john.doe@example.com");
+        3:   13:    contact.updateContactInfo("098-765-4321", "jane.doe@example.com");
+        -:   14:
+       1*:   15:    EXPECT_EQ(contact.getPhone(), "098-765-4321");
+       1*:   16:    EXPECT_EQ(contact.getEmail(), "jane.doe@example.com");
+        1:   17:}
+------------------
+        -:   18:
+        -:   19:

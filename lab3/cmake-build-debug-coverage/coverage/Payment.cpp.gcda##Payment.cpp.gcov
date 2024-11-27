@@ -1,0 +1,21 @@
+        -:    0:Source:D:/BSUIR/course2/PPOIS/lab3/salary_lib/Payment.cpp
+        -:    0:Graph:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\salary_lib\CMakeFiles\salary_lib.dir\Payment.cpp.gcno
+        -:    0:Data:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\salary_lib\CMakeFiles\salary_lib.dir\Payment.cpp.gcda
+        -:    0:Runs:1
+        -:    1:#include "Payment.h"
+        -:    2:#include <iostream>
+        -:    3:
+        3:    4:Payment::Payment(Employee* employee, double amount, const std::string& date)
+        3:    5:    : employee(employee), amount(amount), date(date) {
+        3:    6:    if (amount < 0) {
+        1:    7:        throw std::invalid_argument("Payment amount cannot be negative");
+        -:    8:    }
+        3:    9:}
+        -:   10:
+        1:   11:void Payment::processPayment() {
+        1:   12:    std::cout << "Processed payment of $" << amount << " to " << employee->getFirstName() << " " << employee->getLastName() << " on " << date << std::endl;
+        1:   13:}
+        -:   14:
+        1:   15:Employee* Payment::getEmployee() const { return employee; }
+        1:   16:double Payment::getAmount() const { return amount; }
+        1:   17:std::string Payment::getDate() const { return date; }

@@ -1,0 +1,54 @@
+        -:    0:Source:D:/BSUIR/course2/PPOIS/lab3/salary_lib/Project.cpp
+        -:    0:Graph:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\salary_lib\CMakeFiles\salary_lib.dir\Project.cpp.gcno
+        -:    0:Data:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\salary_lib\CMakeFiles\salary_lib.dir\Project.cpp.gcda
+        -:    0:Runs:1
+        -:    1:#include "Project.h"
+        -:    2:#include <iostream>
+        -:    3:#include <algorithm>
+        -:    4:
+        6:    5:Project::Project(const std::string& name) : name(name) {}
+        -:    6:
+        6:    7:void Project::addTask(Task* task) {
+        6:    8:    tasks.push_back(task);
+        6:    9:}
+        -:   10:
+        5:   11:void Project::addEmployee(Employee* employee) {
+        5:   12:    employees.push_back(employee);
+        5:   13:}
+        -:   14:
+        1:   15:void Project::removeTask(const std::string& description) {
+        2:   16:    tasks.erase(std::remove_if(tasks.begin(), tasks.end(),
+        5:   17:               [description](Task* task) { return task->getDescription() == description; }), tasks.end());
+        1:   18:}
+        -:   19:
+        1:   20:void Project::removeEmployee(int id) {
+        1:   21:    employees.erase(std::remove_if(employees.begin(), employees.end(),
+        3:   22:                  [id](Employee* employee) { return employee->getID() == id; }), employees.end());
+        1:   23:}
+        -:   24:
+        2:   25:void Project::showProjectDetails() const {
+        2:   26:    std::cout << "Project: " << name << std::endl;
+        2:   27:    std::cout << "Tasks:" << std::endl;
+        6:   28:    for (Task* task : tasks) {
+       4*:   29:        std::cout << "- " << task->getDescription() << " (Due: " << task->getDeadline() << ", Status: " << (task->isCompleted() ? "Completed" : "Not Completed") << ")" << std::endl;
+        -:   30:    }
+        2:   31:    std::cout << "Employees:" << std::endl;
+        5:   32:    for (Employee* employee : employees) {
+        3:   33:        std::cout << "- " << employee->getFirstName() << " " << employee->getLastName() << std::endl;
+        -:   34:    }
+        2:   35:}
+        -:   36:
+        2:   37:std::string Project::getName() const
+        -:   38:{
+        2:   39:    return name;
+        -:   40:}
+        -:   41:
+        3:   42:std::vector<Task*> Project::getTasks()
+        -:   43:{
+        3:   44:    return tasks;
+        -:   45:}
+        -:   46:
+        3:   47:std::vector<Employee*> Project::getEmployees()
+        -:   48:{
+        3:   49:    return employees;
+        -:   50:}

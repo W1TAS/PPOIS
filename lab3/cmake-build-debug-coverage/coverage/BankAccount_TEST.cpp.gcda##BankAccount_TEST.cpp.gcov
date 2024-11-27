@@ -1,0 +1,61 @@
+        -:    0:Source:D:/BSUIR/course2/PPOIS/lab3/Google_tests/BankAccount_TEST.cpp
+        -:    0:Graph:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\Google_tests\CMakeFiles\Google_Tests_run.dir\BankAccount_TEST.cpp.gcno
+        -:    0:Data:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\Google_tests\CMakeFiles\Google_Tests_run.dir\BankAccount_TEST.cpp.gcda
+        -:    0:Runs:1
+        -:    1:#include <gtest/gtest.h>
+        -:    2:#include "BankAccount.h"
+        -:    3:
+        4:    4:TEST(BankAccountTest, ConstructorTest) {
+        3:    5:  BankAccount account("123456789", "Tech Bank");
+        -:    6:
+       1*:    7:  EXPECT_EQ(account.getAccountNumber(), "123456789");
+       1*:    8:  EXPECT_EQ(account.getBank(), "Tech Bank");
+        1:    9:}
+------------------
+_ZN36BankAccountTest_ConstructorTest_TestC1Ev:
+        1:    4:TEST(BankAccountTest, ConstructorTest) {
+------------------
+_ZN36BankAccountTest_ConstructorTest_TestD0Ev:
+        1:    4:TEST(BankAccountTest, ConstructorTest) {
+------------------
+_ZN36BankAccountTest_ConstructorTest_TestD1Ev:
+        1:    4:TEST(BankAccountTest, ConstructorTest) {
+------------------
+_ZN36BankAccountTest_ConstructorTest_Test8TestBodyEv:
+        1:    4:TEST(BankAccountTest, ConstructorTest) {
+        3:    5:  BankAccount account("123456789", "Tech Bank");
+        -:    6:
+       1*:    7:  EXPECT_EQ(account.getAccountNumber(), "123456789");
+       1*:    8:  EXPECT_EQ(account.getBank(), "Tech Bank");
+        1:    9:}
+------------------
+        -:   10:
+        4:   11:TEST(BankAccountTest, UpdateBankAccountTest) {
+        4:   12:  BankAccount account("123456789", "Tech Bank");
+        3:   13:  account.updateBankAccount("987654321", "Finance Bank");
+        -:   14:
+       1*:   15:  EXPECT_EQ(account.getAccountNumber(), "987654321");
+       1*:   16:  EXPECT_EQ(account.getBank(), "Finance Bank");
+        1:   17:}
+------------------
+_ZN42BankAccountTest_UpdateBankAccountTest_TestC1Ev:
+        1:   11:TEST(BankAccountTest, UpdateBankAccountTest) {
+------------------
+_ZN42BankAccountTest_UpdateBankAccountTest_TestD0Ev:
+        1:   11:TEST(BankAccountTest, UpdateBankAccountTest) {
+------------------
+_ZN42BankAccountTest_UpdateBankAccountTest_TestD1Ev:
+        1:   11:TEST(BankAccountTest, UpdateBankAccountTest) {
+------------------
+_ZN42BankAccountTest_UpdateBankAccountTest_Test8TestBodyEv:
+        1:   11:TEST(BankAccountTest, UpdateBankAccountTest) {
+        4:   12:  BankAccount account("123456789", "Tech Bank");
+        3:   13:  account.updateBankAccount("987654321", "Finance Bank");
+        -:   14:
+       1*:   15:  EXPECT_EQ(account.getAccountNumber(), "987654321");
+       1*:   16:  EXPECT_EQ(account.getBank(), "Finance Bank");
+        1:   17:}
+------------------
+        -:   18:
+        -:   19:
+        -:   20:

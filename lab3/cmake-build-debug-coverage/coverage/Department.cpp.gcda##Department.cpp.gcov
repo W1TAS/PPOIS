@@ -1,0 +1,28 @@
+        -:    0:Source:D:/BSUIR/course2/PPOIS/lab3/salary_lib/Department.cpp
+        -:    0:Graph:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\salary_lib\CMakeFiles\salary_lib.dir\Department.cpp.gcno
+        -:    0:Data:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\salary_lib\CMakeFiles\salary_lib.dir\Department.cpp.gcda
+        -:    0:Runs:1
+        -:    1:#include "Department.h"
+        -:    2:#include <algorithm>
+        -:    3:
+        7:    4:Department::Department(const std::string& name) : name(name) {}
+        -:    5:
+       11:    6:void Department::addEmployee(Employee* employee) {
+       11:    7:    employees.push_back(employee);
+       11:    8:}
+        -:    9:
+        1:   10:void Department::removeEmployee(int id) {
+        1:   11:    employees.erase(std::remove_if(employees.begin(), employees.end(),
+        3:   12:                   [id](Employee* employee) { return employee->getID() == id; }), employees.end());
+        1:   13:}
+        -:   14:
+        3:   15:double Department::calculateTotalSalary() const {
+        3:   16:    double total = 0;
+       12:   17:    for (Employee* employee : employees) {
+        9:   18:        total += employee->calculateSalary();
+        -:   19:    }
+        3:   20:    return total;
+        -:   21:}
+        -:   22:
+        4:   23:std::string Department::getName() const { return name; }
+        4:   24:const std::vector<Employee*>& Department::getEmployees() const { return employees; }

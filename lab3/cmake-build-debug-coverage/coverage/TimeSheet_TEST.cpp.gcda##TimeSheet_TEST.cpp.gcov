@@ -1,0 +1,75 @@
+        -:    0:Source:D:/BSUIR/course2/PPOIS/lab3/Google_tests/TimeSheet_TEST.cpp
+        -:    0:Graph:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\Google_tests\CMakeFiles\Google_Tests_run.dir\TimeSheet_TEST.cpp.gcno
+        -:    0:Data:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\Google_tests\CMakeFiles\Google_Tests_run.dir\TimeSheet_TEST.cpp.gcda
+        -:    0:Runs:1
+        -:    1:#include <gtest/gtest.h>
+        -:    2:#include "TimeSheet.h"
+        -:    3:#include "Employee.h"
+        -:    4:#include "ContactInfo.h"
+        -:    5:#include "Address.h"
+        -:    6:
+        4:    7:TEST(TimeSheetTest, ConstructorTest) {
+        4:    8:    ContactInfo contact("123-456-7890", "john.doe@example.com");
+        4:    9:    Address address("Minsk", "Lenina", 10);
+        6:   10:    Employee emp(1, "John", "Doe", "Developer", 50, contact, address);
+        1:   11:    TimeSheet timesheet(&emp, "2024-11-25", 160);
+        -:   12:
+       1*:   13:    EXPECT_EQ(timesheet.getEmployee()->getFirstName(), "John");
+       1*:   14:    EXPECT_EQ(timesheet.getDate(), "2024-11-25");
+       1*:   15:    EXPECT_EQ(timesheet.getHoursWorked(), 160);
+        1:   16:}
+------------------
+_ZN34TimeSheetTest_ConstructorTest_TestC1Ev:
+        1:    7:TEST(TimeSheetTest, ConstructorTest) {
+------------------
+_ZN34TimeSheetTest_ConstructorTest_TestD0Ev:
+        1:    7:TEST(TimeSheetTest, ConstructorTest) {
+------------------
+_ZN34TimeSheetTest_ConstructorTest_TestD1Ev:
+        1:    7:TEST(TimeSheetTest, ConstructorTest) {
+------------------
+_ZN34TimeSheetTest_ConstructorTest_Test8TestBodyEv:
+        1:    7:TEST(TimeSheetTest, ConstructorTest) {
+        4:    8:    ContactInfo contact("123-456-7890", "john.doe@example.com");
+        4:    9:    Address address("Minsk", "Lenina", 10);
+        6:   10:    Employee emp(1, "John", "Doe", "Developer", 50, contact, address);
+        1:   11:    TimeSheet timesheet(&emp, "2024-11-25", 160);
+        -:   12:
+       1*:   13:    EXPECT_EQ(timesheet.getEmployee()->getFirstName(), "John");
+       1*:   14:    EXPECT_EQ(timesheet.getDate(), "2024-11-25");
+       1*:   15:    EXPECT_EQ(timesheet.getHoursWorked(), 160);
+        1:   16:}
+------------------
+        -:   17:
+        4:   18:TEST(TimeSheetTest, FillTimeSheetTest) {
+        4:   19:    ContactInfo contact("123-456-7890", "john.doe@example.com");
+        4:   20:    Address address("Minsk", "Lenina", 10);
+        6:   21:    Employee emp(1, "John", "Doe", "Developer", 50, contact, address);
+        1:   22:    TimeSheet timesheet(&emp, "2024-11-25", 160);
+        -:   23:
+        1:   24:    timesheet.fillTimeSheet(200);
+       1*:   25:    EXPECT_EQ(timesheet.getHoursWorked(), 200);
+        1:   26:}
+------------------
+_ZN36TimeSheetTest_FillTimeSheetTest_TestC1Ev:
+        1:   18:TEST(TimeSheetTest, FillTimeSheetTest) {
+------------------
+_ZN36TimeSheetTest_FillTimeSheetTest_TestD0Ev:
+        1:   18:TEST(TimeSheetTest, FillTimeSheetTest) {
+------------------
+_ZN36TimeSheetTest_FillTimeSheetTest_TestD1Ev:
+        1:   18:TEST(TimeSheetTest, FillTimeSheetTest) {
+------------------
+_ZN36TimeSheetTest_FillTimeSheetTest_Test8TestBodyEv:
+        1:   18:TEST(TimeSheetTest, FillTimeSheetTest) {
+        4:   19:    ContactInfo contact("123-456-7890", "john.doe@example.com");
+        4:   20:    Address address("Minsk", "Lenina", 10);
+        6:   21:    Employee emp(1, "John", "Doe", "Developer", 50, contact, address);
+        1:   22:    TimeSheet timesheet(&emp, "2024-11-25", 160);
+        -:   23:
+        1:   24:    timesheet.fillTimeSheet(200);
+       1*:   25:    EXPECT_EQ(timesheet.getHoursWorked(), 200);
+        1:   26:}
+------------------
+        -:   27:
+        -:   28:

@@ -1,0 +1,115 @@
+        -:    0:Source:D:/BSUIR/course2/PPOIS/lab3/Google_tests/Payment_TEST.cpp
+        -:    0:Graph:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\Google_tests\CMakeFiles\Google_Tests_run.dir\Payment_TEST.cpp.gcno
+        -:    0:Data:D:\BSUIR\course2\PPOIS\lab3\cmake-build-debug-coverage\Google_tests\CMakeFiles\Google_Tests_run.dir\Payment_TEST.cpp.gcda
+        -:    0:Runs:1
+        -:    1:#include <gtest/gtest.h>
+        -:    2:#include "Payment.h"
+        -:    3:#include "Employee.h"
+        -:    4:#include "ContactInfo.h"
+        -:    5:#include "Address.h"
+        -:    6:
+        4:    7:TEST(PaymentTest, ConstructorTest) {
+        4:    8:    ContactInfo contact("123-456-7890", "john.doe@example.com");
+        4:    9:    Address address("Minsk", "Lenina", 10);
+        6:   10:    Employee emp(1, "John", "Doe", "Developer", 50, contact, address);
+        -:   11:
+        1:   12:    Payment payment(&emp, 1000, "2024-11-25");
+        -:   13:
+       1*:   14:    EXPECT_EQ(payment.getEmployee()->getFirstName(), "John");
+       1*:   15:    EXPECT_DOUBLE_EQ(payment.getAmount(), 1000);
+       1*:   16:    EXPECT_EQ(payment.getDate(), "2024-11-25");
+        1:   17:}
+------------------
+_ZN32PaymentTest_ConstructorTest_TestC1Ev:
+        1:    7:TEST(PaymentTest, ConstructorTest) {
+------------------
+_ZN32PaymentTest_ConstructorTest_TestD0Ev:
+        1:    7:TEST(PaymentTest, ConstructorTest) {
+------------------
+_ZN32PaymentTest_ConstructorTest_TestD1Ev:
+        1:    7:TEST(PaymentTest, ConstructorTest) {
+------------------
+_ZN32PaymentTest_ConstructorTest_Test8TestBodyEv:
+        1:    7:TEST(PaymentTest, ConstructorTest) {
+        4:    8:    ContactInfo contact("123-456-7890", "john.doe@example.com");
+        4:    9:    Address address("Minsk", "Lenina", 10);
+        6:   10:    Employee emp(1, "John", "Doe", "Developer", 50, contact, address);
+        -:   11:
+        1:   12:    Payment payment(&emp, 1000, "2024-11-25");
+        -:   13:
+       1*:   14:    EXPECT_EQ(payment.getEmployee()->getFirstName(), "John");
+       1*:   15:    EXPECT_DOUBLE_EQ(payment.getAmount(), 1000);
+       1*:   16:    EXPECT_EQ(payment.getDate(), "2024-11-25");
+        1:   17:}
+------------------
+        -:   18:
+        4:   19:TEST(PaymentTest, NegativeAmountTest) {
+        4:   20:    ContactInfo contact("123-456-7890", "john.doe@example.com");
+        4:   21:    Address address("Minsk", "Lenina", 10);
+        5:   22:    Employee emp(1, "John", "Doe", "Developer", 50, contact, address);
+        -:   23:
+        -:   24:    // Попытка создания платежа с отрицательной суммой должна вызвать исключение
+       3*:   25:    EXPECT_THROW(Payment(&emp, -1000, "2024-11-25"), std::invalid_argument);
+        1:   26:}
+------------------
+_ZN35PaymentTest_NegativeAmountTest_TestC1Ev:
+        1:   19:TEST(PaymentTest, NegativeAmountTest) {
+------------------
+_ZN35PaymentTest_NegativeAmountTest_TestD0Ev:
+        1:   19:TEST(PaymentTest, NegativeAmountTest) {
+------------------
+_ZN35PaymentTest_NegativeAmountTest_TestD1Ev:
+        1:   19:TEST(PaymentTest, NegativeAmountTest) {
+------------------
+_ZN35PaymentTest_NegativeAmountTest_Test8TestBodyEv:
+        1:   19:TEST(PaymentTest, NegativeAmountTest) {
+        4:   20:    ContactInfo contact("123-456-7890", "john.doe@example.com");
+        4:   21:    Address address("Minsk", "Lenina", 10);
+        5:   22:    Employee emp(1, "John", "Doe", "Developer", 50, contact, address);
+        -:   23:
+        -:   24:    // Попытка создания платежа с отрицательной суммой должна вызвать исключение
+       3*:   25:    EXPECT_THROW(Payment(&emp, -1000, "2024-11-25"), std::invalid_argument);
+        1:   26:}
+------------------
+        -:   27:
+        4:   28:TEST(PaymentTest, ProcessPaymentTest) {
+        4:   29:    ContactInfo contact("123-456-7890", "john.doe@example.com");
+        4:   30:    Address address("Minsk", "Lenina", 10);
+        6:   31:    Employee emp(1, "John", "Doe", "Developer", 50, contact, address);
+        -:   32:
+        1:   33:    Payment payment(&emp, 1000, "2024-11-25");
+        -:   34:
+        -:   35:    // Перехват стандартного вывода
+        1:   36:    testing::internal::CaptureStdout();
+        1:   37:    payment.processPayment();
+        1:   38:    std::string output = testing::internal::GetCapturedStdout();
+        -:   39:
+       1*:   40:    EXPECT_EQ(output, "Processed payment of $1000 to John Doe on 2024-11-25\n");
+        1:   41:}
+------------------
+_ZN35PaymentTest_ProcessPaymentTest_TestC1Ev:
+        1:   28:TEST(PaymentTest, ProcessPaymentTest) {
+------------------
+_ZN35PaymentTest_ProcessPaymentTest_TestD0Ev:
+        1:   28:TEST(PaymentTest, ProcessPaymentTest) {
+------------------
+_ZN35PaymentTest_ProcessPaymentTest_TestD1Ev:
+        1:   28:TEST(PaymentTest, ProcessPaymentTest) {
+------------------
+_ZN35PaymentTest_ProcessPaymentTest_Test8TestBodyEv:
+        1:   28:TEST(PaymentTest, ProcessPaymentTest) {
+        4:   29:    ContactInfo contact("123-456-7890", "john.doe@example.com");
+        4:   30:    Address address("Minsk", "Lenina", 10);
+        6:   31:    Employee emp(1, "John", "Doe", "Developer", 50, contact, address);
+        -:   32:
+        1:   33:    Payment payment(&emp, 1000, "2024-11-25");
+        -:   34:
+        -:   35:    // Перехват стандартного вывода
+        1:   36:    testing::internal::CaptureStdout();
+        1:   37:    payment.processPayment();
+        1:   38:    std::string output = testing::internal::GetCapturedStdout();
+        -:   39:
+       1*:   40:    EXPECT_EQ(output, "Processed payment of $1000 to John Doe on 2024-11-25\n");
+        1:   41:}
+------------------
+        -:   42:
