@@ -170,3 +170,4 @@ auto Graph<T>::adjacent_vertices_rend(const_reference value) const {
 
 
 #endif //ADJACENTVERTEXITERATORS_TPP
+
