@@ -1,6 +1,4 @@
 class Seed:
-    def __init__(self, plant_type: str):
+    def __init__(self, name, plant_type):
+        self.name = name
         self.plant_type = plant_type
-
-    def __str__(self):
-        return f"Семена {self.plant_type}"

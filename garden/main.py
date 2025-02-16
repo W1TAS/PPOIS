@@ -3,12 +3,22 @@ from services.gardener import Gardener
 from models.seed import Seed
 from models.tool import Tool
 from models.fertilizer import Fertilizer
+from models.soil import Soil
+from models.garden import Garden
+from models.watering import Watering
 
 
 def main():
     storage = Storage("garden_state.json")
-    garden = storage.load()  # Загружаем состояние
+    garden = storage.load()
+
+    if garden is None:
+        soil_type = input("Введите тип почвы: ")
+        soil = Soil(soil_type)
+        garden = Garden(soil)
+
     gardener = Gardener("Иван")
+    watering = Watering()
 
     while True:
         print("\n1. Посадить растение")
@@ -26,12 +36,11 @@ def main():
         if choice == "1":
             plant_name = input("Введите название семени: ")
             plant_type = input("Введите тип растения: ")
-            plant_location = input("Введите место посадки: ")
             seed = Seed(plant_name, plant_type)
-            gardener.plant_seed(garden, seed, plant_location)
+            gardener.plant_seed(garden, seed)
         elif choice == "2":
             plant_name = input("Введите название растения: ")
-            gardener.water_plant(garden, plant_name)
+            gardener.water_plant(garden, plant_name, watering)
         elif choice == "3":
             plant_name = input("Введите название растения: ")
             fertilizer_name = input("Введите название удобрения: ")
@@ -55,11 +64,13 @@ def main():
         elif choice == "8":
             print(garden)
         elif choice == "9":
+            print(f"Сохранение... Тип почвы: {type(garden.soil)}, Значение: {garden.soil}")
             storage.save(garden)
             print("Сохранение и выход...")
             break
         else:
             print("Неверный ввод, попробуйте снова.")
+
 
 if __name__ == "__main__":
     main()
