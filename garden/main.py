@@ -29,28 +29,33 @@ def main():
         print("6. Удалить растение")
         print("7. Переместить растение")
         print("8. Вывести состояние огорода")
-        print("9. Выйти")
+        print("9. Подождать денёк")
+        print("10. Выйти")
 
         choice = input("Выберите действие: ")
 
         if choice == "1":
             plant_name = input("Введите название семени: ")
             plant_type = input("Введите тип растения: ")
+            plant_location = input("Введите место посадки: ")
             seed = Seed(plant_name, plant_type)
-            gardener.plant_seed(garden, seed)
+            gardener.plant_seed(garden, seed, plant_location)
         elif choice == "2":
             plant_name = input("Введите название растения: ")
-            gardener.water_plant(garden, plant_name, watering)
+            watering.water_plant(garden, plant_name)
         elif choice == "3":
             plant_name = input("Введите название растения: ")
             fertilizer_name = input("Введите название удобрения: ")
             fertilizer = Fertilizer(fertilizer_name)
-            gardener.fertilize_plant(garden, plant_name, fertilizer)
+            fertilizer.fertilize_plant(garden, plant_name)
+            print(f"Растение {plant_name} удобрено с помощью удобрения {fertilizer.name}")
         elif choice == "4":
             plant_name = input("Введите название растения: ")
             tool_name = input("Введите название инструмента: ")
             tool = Tool(tool_name)
-            gardener.maintain_plant(garden, plant_name, tool)
+            gardener.maintain_plant(garden, plant_name)
+            print(f"За растением {plant_name} был произведён уход с помощью инструмента {tool.name}")
+
         elif choice == "5":
             plant_name = input("Введите название растения: ")
             gardener.harvest_plant(garden, plant_name)
@@ -64,6 +69,8 @@ def main():
         elif choice == "8":
             print(garden)
         elif choice == "9":
+            garden.grow()
+        elif choice == "10":
             print(f"Сохранение... Тип почвы: {type(garden.soil)}, Значение: {garden.soil}")
             storage.save(garden)
             print("Сохранение и выход...")

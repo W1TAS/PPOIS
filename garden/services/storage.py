@@ -1,29 +1,33 @@
 import json
-from pathlib import Path
-from models.garden import Garden
 from models.soil import Soil
-
+from models.garden import Garden
+from models.plant import Plant
 
 class Storage:
     def __init__(self, filename):
-        self.filepath = Path(filename)
-
-    def load(self):
-        if self.filepath.exists():
-            with open(self.filepath, "r", encoding="utf-8") as file:
-                data = json.load(file)
-                if "soil" not in data:  # Если нет информации о почве
-                    return None
-                soil = Soil(data["soil"])  # Создаём объект почвы
-                garden = Garden(soil)
-                garden.plants = data.get("plants", {})
-                return garden
-        return None
+        self.filename = filename
 
     def save(self, garden):
-        with open(self.filepath, "w", encoding="utf-8") as file:
+        """Сохраняет состояние огорода в JSON."""
+        with open(self.filename, "w", encoding="utf-8") as f:
             json.dump({
-                "soil": garden.soil.soil_type,  # Сохраняем строку, а не объект
-                "plants": garden.plants
-            }, file, indent=4, ensure_ascii=False)
+                "soil": garden.soil.soil_type,  # Сохраняем тип почвы
+                "plants": {name: plant.__dict__ for name, plant in garden.plants.items()}  # Преобразуем объекты Plant в словари
+            }, f, indent=4, ensure_ascii=False)
 
+    def load(self):
+        """Загружает состояние огорода из JSON."""
+        try:
+            with open(self.filename, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            soil = Soil(data["soil"])
+            garden = Garden(soil)
+
+            for name, plant_data in data["plants"].items():
+                plant = Plant(**plant_data)  # Создаём объект из словаря
+                garden.plants[name] = plant
+
+            return garden
+        except (FileNotFoundError, json.JSONDecodeError):
+            return None

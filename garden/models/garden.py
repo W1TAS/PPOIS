@@ -1,42 +1,38 @@
 import json
 from models.soil import Soil
+from models.plant import Plant
 
 class Garden:
     def __init__(self, soil: Soil):
-        self.plants = {}
-        self.soil = soil  # Храним объект, а не строку
+        self.plants = {}  # Теперь словарь хранит объекты Plant
+        self.soil = soil
 
-    def __str__(self):
-        return json.dumps({
-            "soil": self.soil.soil_type,  # Преобразуем в строку перед выводом
-            "plants": self.plants
-        }, indent=4, ensure_ascii=False)
+    def plant(self, seed, location):
+        """ Создает новое растение в огороде. """
+        new_plant = Plant(seed.name, seed.plant_type, location)
+        self.plants[seed.name] = new_plant
 
-    def plant(self, seed):
-        self.plants[seed.name] = {
-            "type": seed.plant_type,
-            "watered": False,
-            "fertilized": False,
-            "harvested": False,
-            "maintained": False,
-            "location": "default"
-        }
+    def grow(self):
+        """ Проходит неделя, растения растут, но могут засохнуть. """
+        to_remove = [name for name, plant in self.plants.items() if not plant.grow()]
+        for name in to_remove:
+            del self.plants[name]  # Удаляем засохшие растения
 
-    def water(self, name, watering):
+    def water(self, name):
         if name in self.plants:
-            self.plants[name]["watered"] = watering.water()
+            self.plants[name].water()
 
-    def fertilize(self, name, fertilizer):
+    def fertilize(self, name):
         if name in self.plants:
-            self.plants[name]["fertilized"] = True
+            self.plants[name].fertilize()
 
-    def maintain(self, name, tool):
+    def maintain(self, name):
         if name in self.plants:
-            self.plants[name]["maintained"] = True
+            self.plants[name].maintain()
 
     def harvest(self, name):
         if name in self.plants:
-            self.plants[name]["harvested"] = True
+            self.plants[name].harvest()
 
     def remove_plant(self, name):
         if name in self.plants:
@@ -44,7 +40,10 @@ class Garden:
 
     def move_plant(self, name, new_location):
         if name in self.plants:
-            self.plants[name]["location"] = new_location
+            self.plants[name].move(new_location)
 
     def __str__(self):
-        return json.dumps(self.plants, indent=4, ensure_ascii=False)
+        return json.dumps(
+            {name: plant.__dict__ for name, plant in self.plants.items()},
+            indent=4, ensure_ascii=False
+        )
