@@ -5,6 +5,7 @@ from models.fertilizer import Fertilizer
 from models.soil import Soil
 from models.seed import Seed
 from models.watering import Watering
+from models.tool import Tool
 
 class TestGarden(unittest.TestCase):
     def setUp(self):
@@ -32,9 +33,14 @@ class TestGarden(unittest.TestCase):
         self.assertTrue(plant.fertilized)
         self.assertEqual(plant.growth_stage, 0.5)
 
+    def test_tool(self):
+        name = "Мотыга"
+        tool = Tool(name)
+        self.assertTrue(tool.name == name)
+
     def test_harvest(self):
         plant = self.garden.plants[self.seed.name]
-        plant.growth_stage = 10
+        plant.growth_stage = 15
         self.garden.harvest(self.seed.name)
         self.assertTrue(plant.harvested)
         self.assertEqual(plant.growth_stage, 0)

@@ -32,7 +32,8 @@ class Plant:
     def fertilize(self):
         """ Удобрение ускоряет рост. """
         self.fertilized = True
-        self.growth_stage += 0.5
+        if self.growth_stage < self.MAX_GROWTH_STAGE:
+            self.growth_stage += 0.5
 
     def maintain(self):
         """ Обработка инструмента. """
@@ -40,8 +41,9 @@ class Plant:
 
     def harvest(self):
         """ Сбор урожая обнуляет рост. """
-        self.harvested = True
-        self.growth_stage = 0
+        if self.growth_stage >= self.MAX_GROWTH_STAGE:
+            self.harvested = True
+            self.growth_stage = 0
 
     def move(self, new_location: str):
         """ Перемещение растения. """

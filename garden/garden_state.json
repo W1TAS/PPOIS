@@ -1,0 +1,16 @@
+{
+    "soil": "чтото",
+    "plants": {
+        "виктор": {
+            "name": "виктор",
+            "plant_type": "корнеплод",
+            "location": "1",
+            "growth_stage": 3,
+            "watered": true,
+            "fertilized": false,
+            "harvested": false,
+            "maintained": false,
+            "days_without_water": 0
+        }
+    }
+}

@@ -27,7 +27,7 @@ class TestGardener(unittest.TestCase):
 
     def test_harvest_plant(self):
         self.gardener.harvest_plant(self.garden, "Морковь")
-        self.assertTrue(self.garden.plants["Морковь"].harvested)
+        self.assertFalse(self.garden.plants["Морковь"].harvested)
         self.assertEqual(self.garden.plants["Морковь"].growth_stage, 0)
 
     def test_remove_plant(self):
