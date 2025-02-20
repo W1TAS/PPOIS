@@ -34,49 +34,49 @@ def main():
 
         choice = input("Выберите действие: ")
 
-        if choice == "1":
-            plant_name = input("Введите название семени: ")
-            plant_type = input("Введите тип растения: ")
-            plant_location = input("Введите место посадки: ")
-            seed = Seed(plant_name, plant_type)
-            gardener.plant_seed(garden, seed, plant_location)
-        elif choice == "2":
-            plant_name = input("Введите название растения: ")
-            watering.water_plant(garden, plant_name)
-        elif choice == "3":
-            plant_name = input("Введите название растения: ")
-            fertilizer_name = input("Введите название удобрения: ")
-            fertilizer = Fertilizer(fertilizer_name)
-            fertilizer.fertilize_plant(garden, plant_name)
-            print(f"Растение {plant_name} удобрено с помощью удобрения {fertilizer.name}")
-        elif choice == "4":
-            plant_name = input("Введите название растения: ")
-            tool_name = input("Введите название инструмента: ")
-            tool = Tool(tool_name)
-            gardener.maintain_plant(garden, plant_name)
-            print(f"За растением {plant_name} был произведён уход с помощью инструмента {tool.name}")
-
-        elif choice == "5":
-            plant_name = input("Введите название растения: ")
-            gardener.harvest_plant(garden, plant_name)
-        elif choice == "6":
-            plant_name = input("Введите название растения для удаления: ")
-            gardener.remove_plant(garden, plant_name)
-        elif choice == "7":
-            plant_name = input("Введите название растения: ")
-            new_location = input("Введите новое местоположение: ")
-            gardener.move_plant(garden, plant_name, new_location)
-        elif choice == "8":
-            print(garden)
-        elif choice == "9":
-            garden.grow()
-        elif choice == "10":
-            print(f"Сохранение... Тип почвы: {type(garden.soil)}, Значение: {garden.soil}")
-            storage.save(garden)
-            print("Сохранение и выход...")
-            break
-        else:
-            print("Неверный ввод, попробуйте снова.")
+        match choice:
+            case "1":
+                plant_name = input("Введите название семени: ")
+                plant_type = input("Введите тип растения: ")
+                plant_location = input("Введите место посадки: ")
+                seed = Seed(plant_name, plant_type)
+                gardener.plant_seed(garden, seed, plant_location)
+            case "2":
+                plant_name = input("Введите название растения: ")
+                watering.water_plant(garden, plant_name)
+            case "3":
+                plant_name = input("Введите название растения: ")
+                fertilizer_name = input("Введите название удобрения: ")
+                fertilizer = Fertilizer(fertilizer_name)
+                fertilizer.fertilize_plant(garden, plant_name)
+                print(f"Растение {plant_name} удобрено с помощью удобрения {fertilizer.name}")
+            case "4":
+                plant_name = input("Введите название растения: ")
+                tool_name = input("Введите название инструмента: ")
+                tool = Tool(tool_name)
+                gardener.maintain_plant(garden, plant_name)
+                print(f"За растением {plant_name} был произведён уход с помощью инструмента {tool.name}")
+            case "5":
+                plant_name = input("Введите название растения: ")
+                gardener.harvest_plant(garden, plant_name)
+            case "6":
+                plant_name = input("Введите название растения для удаления: ")
+                gardener.remove_plant(garden, plant_name)
+            case "7":
+                plant_name = input("Введите название растения: ")
+                new_location = input("Введите новое местоположение: ")
+                gardener.move_plant(garden, plant_name, new_location)
+            case "8":
+                print(garden)
+            case "9":
+                garden.grow()
+            case "10":
+                print(f"Сохранение... Тип почвы: {type(garden.soil)}, Значение: {garden.soil}")
+                storage.save(garden)
+                print("Сохранение и выход...")
+                break
+            case _:
+                print("Неверный ввод, попробуйте снова.")
 
 
 if __name__ == "__main__":
