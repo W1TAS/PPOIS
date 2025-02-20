@@ -1,8 +1,0 @@
-# Исключаем виртуальное окружение
-venv/
-.venv/
-
-# Исключаем файлы PyCharm
-.idea/
-services/__pycache__
-models/__pycache__
