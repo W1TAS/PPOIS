@@ -1,9 +1,7 @@
 import unittest
-import json
 import os
 from models.soil import Soil
 from models.garden import Garden
-from models.plant import Plant
 from models.seed import Seed
 from services.gardener import Gardener
 from services.storage import Storage
@@ -61,5 +59,3 @@ class TestStorage(unittest.TestCase):
         self.assertEqual(loaded_garden.plants["Помидор"].location, "Грядка 3")
 
 
-if __name__ == "__main__":
-    unittest.main()

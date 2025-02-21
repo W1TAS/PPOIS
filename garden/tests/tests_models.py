@@ -83,5 +83,3 @@ class TestWatering(unittest.TestCase):
         self.watering.water_plant(self.garden, self.seed.name)
         self.assertTrue(plant.watered)
 
-if __name__ == "__main__":
-    unittest.main()

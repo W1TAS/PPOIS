@@ -9,17 +9,17 @@ class Storage:
 
     def save(self, garden):
         """Сохраняет состояние огорода в JSON."""
-        with open(self.filename, "w", encoding="utf-8") as f:
+        with open(self.filename, "w", encoding="utf-8") as file:
             json.dump({
                 "soil": garden.soil.soil_type,  # Сохраняем тип почвы
                 "plants": {name: plant.__dict__ for name, plant in garden.plants.items()}  # Преобразуем объекты Plant в словари
-            }, f, indent=4, ensure_ascii=False)
+            }, file, indent=4, ensure_ascii=False)
 
     def load(self):
         """Загружает состояние огорода из JSON."""
         try:
-            with open(self.filename, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            with open(self.filename, "r", encoding="utf-8") as file:
+                data = json.load(file)
 
             soil = Soil(data["soil"])
             garden = Garden(soil)
