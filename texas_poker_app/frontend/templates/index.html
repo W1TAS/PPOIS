@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Texas Poker</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div id="auth">
+        <h2>Login</h2>
+        <label for="username">Username:</label>
+        <input type="text" id="username" placeholder="Username">
+        <label for="password">Password:</label>
+        <input type="password" id="password" placeholder="Password">
+        <button id="login-button">Login</button>
+        <button id="register-button">Register</button>
+    </div>
+    <div id="game-table" style="display: none;">
+        <h2>Players</h2>
+        <ul id="player-list"></ul>
+        <div id="stage"></div>
+        <div id="community-cards"></div>
+        <div id="player-hand"></div>
+        <div id="pot"></div>
+        <div id="balance"></div>
+        <div id="current-player"></div>
+        <div id="winner" style="display: none;"></div>
+        <button id="ready-button">Ready</button>
+        <div id="actions" style="display: none;">
+            <label for="bet-amount">Bet Amount:</label>
+            <input type="number" id="bet-amount" min="1" placeholder="Bet amount">
+            <button id="bet-button">Bet</button>
+            <button id="call-pass-button">Call/Pass</button>
+            <button id="fold-button">Fold</button>
+            <button id="all-in-button">All-in</button>
+        </div>
+    </div>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
