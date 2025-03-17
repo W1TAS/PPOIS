@@ -1,8 +1,9 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
-from ..models.game import PokerGame
+from ..models.game import PokerGame, Player
 from ..routes.auth import get_current_user
-from ..models.database import get_db  # Импортируем get_db для ручного разрешения
+from ..models.database import get_db
 import json
+import asyncio
 
 router = APIRouter()
 
@@ -10,9 +11,12 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections = {}  # {websocket: {"player_id": str, "ready": bool}}
         self.game = None
+        self.players = {}  # {player_id: Player} для сохранения состояния игроков
 
     async def connect(self, websocket: WebSocket, player_id: str):
         await websocket.accept()
+        if player_id not in self.players:
+            self.players[player_id] = Player(player_id)
         self.active_connections[websocket] = {"player_id": player_id, "ready": False}
         await self.broadcast_state()
 
@@ -34,7 +38,7 @@ class ConnectionManager:
             return
         state = {
             "players": [
-                {"player_id": data["player_id"], "ready": data["ready"]}
+                {"player_id": data["player_id"], "ready": data["ready"], "balance": self.players[data["player_id"]].balance}
                 for data in self.active_connections.values()
             ],
             "game_active": bool(self.game)
@@ -50,8 +54,9 @@ class ConnectionManager:
                     print(f"Error sending state to {self.active_connections[websocket]['player_id']}: {e}")
 
     async def start_game(self):
-        player_names = [data["player_id"] for data in self.active_connections.values()]
-        self.game = PokerGame(player_names)
+        player_ids = [data["player_id"] for data in self.active_connections.values()]
+        self.game = PokerGame([])
+        self.game.players = [self.players[player_id] for player_id in player_ids]
         self.game.start_new_round()
         print("Game started, sending initial state")
         for websocket, data in self.active_connections.items():
@@ -105,6 +110,7 @@ class ConnectionManager:
             winner = self.game.get_winner()
             await self.broadcast_winner(winner)
             self.game = None
+            await asyncio.sleep(3)
             await self.broadcast_state()
             return
 
@@ -115,6 +121,7 @@ class ConnectionManager:
                     winner = self.game.get_winner()
                     await self.broadcast_winner(winner)
                     self.game = None
+                    await asyncio.sleep(3)
                     await self.broadcast_state()
                     print("Showdown reached, winner determined")
                 else:
@@ -143,7 +150,6 @@ manager = ConnectionManager()
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, token: str):
-    # Ручное разрешение зависимости get_db
     db = next(get_db())
     try:
         username = await get_current_user(token, db)
@@ -151,7 +157,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
         await websocket.close(code=1008)
         return
     finally:
-        db.close()  # Закрываем сессию вручную
+        db.close()
 
     await manager.connect(websocket, username)
     try:
@@ -162,10 +168,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             value = message.get("value")
             if action == "ready":
                 await manager.set_ready(websocket, message.get("ready", False))
-            elif action in ["bet", "call_or_pass", "fold Tomasz", "all_in"]:
+            elif action in ["bet", "call_or_pass", "fold", "all_in"]:
                 await manager.handle_action(websocket, action, value)
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
     except Exception as e:
         print(f"WebSocket error: {e}")
-        await websocket.close(code=1011)  # Internal error
+        await websocket.close(code=1011)

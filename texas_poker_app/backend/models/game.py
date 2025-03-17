@@ -58,22 +58,22 @@ class PokerGame:
     STAGES = ["preflop", "flop", "turn", "river", "showdown"]
 
     def __init__(self, player_names):
-        self.players = [Player(name) for name in player_names]
+        self.players = [Player(name) for name in player_names] if player_names else []
         self.deck = Deck()
         self.community_cards = []
         self.revealed_cards = []
-        self.pot = 0
-        self.current_bet = 0  # Максимальная ставка в текущем круге
+        self.pots = []  # Список банков: [{"amount": int, "eligible_players": [str]}]
+        self.current_bet = 0
         self.stage = "preflop"
         self.current_player_index = 0
-        self.actions_taken = 0  # Счётчик действий на текущей стадии
+        self.actions_taken = 0
 
     def start_new_round(self):
         self.deck = Deck()
         self.deck.shuffle()
         self.community_cards = [self.deck.deal_card() for _ in range(5)]
         self.revealed_cards = []
-        self.pot = 0
+        self.pots = [{"amount": 0, "eligible_players": [p.name for p in self.players]}]
         self.current_bet = 0
         self.stage = "preflop"
         self.current_player_index = 0
@@ -87,11 +87,9 @@ class PokerGame:
         active_players = [p for p in self.players if not p.folded]
         if len(active_players) <= 1:
             return True
-        # Проверяем, уравнены ли ставки
-        bets_equal = all(p.current_bet == self.current_bet for p in active_players)
-        # Проверяем, сделал ли каждый активный игрок хотя бы одно действие
+        bets_settled = all(p.current_bet == self.current_bet or p.balance == 0 or p.folded for p in self.players)
         round_completed = self.actions_taken >= len(active_players)
-        return bets_equal and round_completed
+        return bets_settled and round_completed
 
     def advance_stage(self):
         if not self.can_advance_stage():
@@ -103,15 +101,10 @@ class PokerGame:
                 self.revealed_cards = self.community_cards[:3]
             elif self.stage == "turn":
                 self.revealed_cards = self.community_cards[:4]
-            elif self.stage == "river":
+            elif self.stage == "river" or self.stage == "showdown":
                 self.revealed_cards = self.community_cards[:5]
-            elif self.stage == "showdown":
-                self.revealed_cards = self.community_cards[:5]
-            self.current_bet = 0
-            for player in self.players:
-                player.reset_bet()
-            self.current_player_index = self.next_active_player(-1)  # Начинаем с первого активного игрока
-            self.actions_taken = 0  # Сбрасываем счётчик действий
+            self.current_player_index = self.next_active_player(-1)
+            self.actions_taken = 0
             return True
         return False
 
@@ -129,15 +122,16 @@ class PokerGame:
         if player.folded or player_index != self.current_player_index:
             return False
         total_bet = player.current_bet + amount
-        if total_bet <= self.current_bet:
-            raise ValueError("Bet must be higher than current bet")
+        if total_bet < self.current_bet:
+            raise ValueError("Bet must match or exceed current bet")
         if amount > player.balance:
-            raise ValueError("Bet exceeds balance")
+            amount = player.balance
+            total_bet = player.current_bet + amount
         player.place_bet(amount)
-        self.pot += amount
-        self.current_bet = total_bet
+        self.update_pots(amount, player)
+        self.current_bet = max(self.current_bet, total_bet)
         self.current_player_index = self.next_active_player(player_index)
-        self.actions_taken += 1  # Увеличиваем счётчик действий
+        self.actions_taken += 1
         return True
 
     def call_or_pass(self, player_index):
@@ -146,10 +140,15 @@ class PokerGame:
             return False
         difference = self.current_bet - player.current_bet
         if difference > 0:
-            player.place_bet(difference)
-            self.pot += difference
+            if difference > player.balance:
+                amount = player.balance
+                player.place_bet(amount)
+                self.update_pots(amount, player)
+            else:
+                player.place_bet(difference)
+                self.update_pots(difference, player)
         self.current_player_index = self.next_active_player(player_index)
-        self.actions_taken += 1  # Увеличиваем счётчик действий
+        self.actions_taken += 1
         return True
 
     def fold(self, player_index):
@@ -157,20 +156,42 @@ class PokerGame:
             return False
         self.players[player_index].fold()
         self.current_player_index = self.next_active_player(player_index)
-        self.actions_taken += 1  # Увеличиваем счётчик действий
+        self.actions_taken += 1
         return True
 
     def all_in(self, player_index):
         player = self.players[player_index]
-        if player.folded or player_index != self.current_player_index:
+        if player.folded or player_index != self.current_player_index or player.balance == 0:
             return False
         amount = player.balance
         player.place_bet(amount)
-        self.pot += amount
+        self.update_pots(amount, player)
         self.current_bet = max(self.current_bet, player.current_bet)
         self.current_player_index = self.next_active_player(player_index)
-        self.actions_taken += 1  # Увеличиваем счётчик действий
+        self.actions_taken += 1
         return True
+
+    def update_pots(self, amount, player):
+        bets = sorted(set(p.current_bet for p in self.players if p.current_bet > 0))
+        new_pots = []
+        previous_cap = 0
+
+        for bet in bets:
+            pot_amount = 0
+            eligible_players = []
+            for p in self.players:
+                if p.current_bet >= bet:
+                    contribution = min(bet, p.current_bet) - previous_cap
+                    pot_amount += contribution
+                    if not p.folded:
+                        eligible_players.append(p.name)
+            if pot_amount > 0 and eligible_players:
+                new_pots.append({"amount": pot_amount, "eligible_players": eligible_players})
+            previous_cap = bet
+
+        if not new_pots:
+            new_pots = [{"amount": 0, "eligible_players": [p.name for p in self.players if not p.folded]}]
+        self.pots = new_pots
 
     def get_game_state(self, player_index):
         player = self.players[player_index]
@@ -180,7 +201,7 @@ class PokerGame:
             "community_cards": [str(card) for card in self.revealed_cards],
             "balance": player.balance,
             "current_bet": player.current_bet,
-            "pot": self.pot,
+            "pots": [{"amount": pot["amount"], "eligible_players": pot["eligible_players"]} for pot in self.pots],
             "players": [
                 {"name": p.name, "folded": p.folded, "bet": p.current_bet}
                 for p in self.players
@@ -247,9 +268,24 @@ class PokerGame:
 
     def get_winner(self):
         active_players = [p for p in self.players if not p.folded]
-        if len(active_players) == 1:
-            winner = active_players[0]
-        else:
-            winner = max(active_players, key=lambda p: self.get_best_hand(p))
-        winner.balance += self.pot
+        if not active_players:
+            return None
+        # Определяем победителя по лучшей комбинации
+        winner = max(active_players, key=lambda p: self.get_best_hand(p)) if len(active_players) > 1 else active_players[0]
+        # Распределяем банки и возвращаем лишние фишки
+        total_won = 0
+        for pot in reversed(self.pots):  # Начинаем с последнего банка
+            if winner.name in pot["eligible_players"]:
+                winner.balance += pot["amount"]
+                total_won += pot["amount"]
+            else:
+                # Если победитель не участвует в этом банке, возвращаем фишки остальным игрокам
+                eligible_players = [p for p in self.players if p.name in pot["eligible_players"]]
+                if eligible_players:
+                    refund_per_player = pot["amount"] // len(eligible_players)
+                    for p in eligible_players:
+                        if p != winner:  # Не возвращаем победителю
+                            p.balance += refund_per_player
+                            print(f"Refunded {refund_per_player} to {p.name} from pot {pot['amount']}")
+        print(f"Winner {winner.name} won {total_won} from pots: {self.pots}")
         return winner.name
