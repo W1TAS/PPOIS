@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let playerHands = {};
     let currentWinner = null;
     let gameEnded = false; // Добавляем флаг для отслеживания окончания игры
+    let currentPlayer = null;
 
     function showGame() {
         console.log("Switching to game view");
@@ -79,72 +80,74 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log("Received WebSocket message:", data);
 
             if (data.stage) {
-                console.log("Game state");
-                document.getElementById("table-center").style.display = "block";
-                document.getElementById("player-info").style.display = "flex";
-                document.getElementById("stage").textContent = `Stage: ${data.stage}`;
+    console.log("Game state");
+    document.getElementById("table-center").style.display = "block";
+    document.getElementById("player-info").style.display = "flex";
+    document.getElementById("stage").textContent = `Stage: ${data.stage}`;
 
-                // Обновляем карты и пот только если игра не закончилась
-                if (!gameEnded) {
-                    updatePlayerHand(data.hand, username === data.current_player);
-                    updateCommunityCards(data.community_cards, data.stage);
-                    if (data.pots) {
-                        const total_pot = data.pots.reduce((sum, pot) => sum + pot.amount, 0);
-                        document.getElementById("pot").textContent = `Pot: ${total_pot} (${data.pots.map(p => p.amount).join(" | ")})`;
-                    } else {
-                        document.getElementById("pot").textContent = "Pot: 0";
-                    }
-                }
+    if (!gameEnded) {
+        updatePlayerHand(data.hand, username === data.current_player);
+        updateCommunityCards(data.community_cards, data.stage);
+        if (data.pots) {
+            const total_pot = data.pots.reduce((sum, pot) => sum + pot.amount, 0);
+            document.getElementById("pot").textContent = `Pot: ${total_pot} (${data.pots.map(p => p.amount).join(" | ")})`;
+        } else {
+            document.getElementById("pot").textContent = "Pot: 0";
+        }
+    }
 
-                playerBalances[username] = data.balance || 0;
-                if (data.players) {
-                    data.players.forEach(player => {
-                        if (player.balance !== undefined) {
-                            playerBalances[player.name] = player.balance;
-                        }
-                        if (player.name === username && data.hand) {
-                            playerHands[player.name] = data.hand;
-                        }
-                    });
-                }
-
-                document.getElementById("balance").innerHTML = `${username} <span>${playerBalances[username]}</span>`;
-                document.getElementById("current-player").textContent = `Current: ${data.current_player}`;
-                updatePlayerList(data.players, username, data.stage === "showdown" ? currentWinner : null);
-                document.getElementById("ready-button").style.display = "none";
-                const isActivePlayer = data.current_player === username && !data.players.find(p => p.name === username)?.folded;
-                console.log(`Current player: ${data.current_player}, isActivePlayer: ${isActivePlayer}`);
-                if (!gameEnded && data.stage !== "showdown") {
-                    document.getElementById("action-bar").style.display = isActivePlayer ? "flex" : "none";
-                    toggleButtons(isActivePlayer);
-                } else {
-                    document.getElementById("action-bar").style.display = "none";
-                    toggleButtons(false);
-                    document.getElementById("ready-button").style.display = "block";
-                    document.getElementById("table-center").style.display = "block";
-                    document.getElementById("player-info").style.display = "flex";
-                }
-                const betAmount = document.getElementById("bet-amount");
-                if (betAmount) {
-                    betAmount.max = data.balance;
-                    betAmount.min = data.current_bet + 1 || 1;
-                }
+    playerBalances[username] = data.balance || 0;
+    if (data.players) {
+        data.players.forEach(player => {
+            if (player.balance !== undefined) {
+                playerBalances[player.name] = player.balance;
             }
+            if (player.name === username && data.hand) {
+                playerHands[player.name] = data.hand;
+            }
+        });
+    }
+
+    document.getElementById("balance").innerHTML = `${username} <span>${playerBalances[username]}</span>`;
+    currentPlayer = data.current_player;
+    updatePlayerList(data.players, username, data.stage === "showdown" ? currentWinner : null);
+    document.getElementById("ready-button").style.display = "none";
+    const isActivePlayer = data.current_player === username && !data.players.find(p => p.name === username)?.folded;
+    console.log(`Current player: ${data.current_player}, isActivePlayer: ${isActivePlayer}, gameEnded: ${gameEnded}, stage: ${data.stage}`);
+    if (data.stage && data.stage !== "showdown" && isActivePlayer) { // Добавляем проверку на наличие stage
+        document.getElementById("action-bar").style.display = "flex";
+        toggleButtons(true);
+    } else {
+        document.getElementById("action-bar").style.display = "none";
+        toggleButtons(false);
+        if (data.stage === "showdown") {
+            document.getElementById("ready-button").style.display = "block";
+            document.getElementById("table-center").style.display = "block";
+            document.getElementById("player-info").style.display = "flex";
+        }
+    }
+    const betAmount = document.getElementById("bet-amount");
+    if (betAmount) {
+        betAmount.max = data.balance;
+        betAmount.min = data.current_bet + 1 || 1;
+    }
+}
 
             // Обработка победителя
             if (data.winner) {
                 console.log("Winner state:", data.winner);
-                gameEnded = true; // Устанавливаем флаг окончания игры
+                gameEnded = true;
                 const winnerName = typeof data.winner === "object" ? (data.winner.name || data.winner.player_id) : data.winner;
                 currentWinner = winnerName;
+                currentPlayer = null; // Скрываем надпись "Current" при победе
                 if (data.players) {
                     updatePlayerList(data.players, username, currentWinner);
                     data.players.forEach(player => {
                         if (player.balance !== undefined) {
-                            playerBalances[player.name] = player.balance; // Обновляем баланс для всех игроков
+                            playerBalances[player.name] = player.balance;
                         }
                         if (player.hand) {
-                            playerHands[player.name] = player.hand; // Сохраняем карты всех игроков
+                            playerHands[player.name] = player.hand;
                         }
                     });
                 } else {
@@ -156,39 +159,19 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             // Сбрасываем состояние при готовности всех игроков
-            if (data.all_ready && data.all_ready === true) {
-                console.log("All players ready, resetting full state");
-                gameEnded = false; // Сбрасываем флаг окончания игры
-                currentWinner = null;
-                document.getElementById("player-hand").innerHTML = "";
-                document.getElementById("community-cards").innerHTML = "";
-                document.getElementById("pot").textContent = "";
-                document.getElementById("balance").textContent = "";
-                document.getElementById("current-player").textContent = "";
-                document.getElementById("table-center").style.display = "none";
-                document.getElementById("player-info").style.display = "none";
-                document.getElementById("action-bar").style.display = "none";
-                if (data.players) {
-                    data.players.forEach(player => {
-                        playerBalances[player.name] = player.balance || 0;
-                    });
-                    updatePlayerList(data.players, username, currentWinner);
-                }
-            } else if (data.players && !data.stage && !data.winner && !data.all_ready) {
-                console.log("Pre-game state without winner, stage, or all ready");
-                gameEnded = false; // Сбрасываем флаг окончания игры
-                data.players.forEach(player => {
-                    playerBalances[player.name] = player.balance || 0;
-                });
-                updatePlayerList(data.players, username, currentWinner);
-                document.getElementById("ready-button").style.display = "block";
-                document.getElementById("action-bar").style.display = "none";
-                toggleButtons(false);
-            }
-
-            if (data.error) {
-                alert(data.error);
-            }
+            if (data.players && !data.stage && !data.winner && !data.all_ready) {
+    console.log("Pre-game state without winner, stage, or all ready");
+    gameEnded = false;
+    data.players.forEach(player => {
+        playerBalances[player.name] = player.balance || 0;
+    });
+    updatePlayerList(data.players, username, currentWinner);
+    document.getElementById("ready-button").style.display = "block"; // Показываем кнопку "Ready"
+    document.getElementById("action-bar").style.display = "none"; // Скрываем кнопки действий
+    toggleButtons(false);
+    document.getElementById("table-center").style.display = "none"; // Скрываем стол
+    document.getElementById("player-info").style.display = "none"; // Скрываем информацию о столе
+}
         };
 
         ws.onclose = () => {
@@ -258,6 +241,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const cardContainer = document.createElement("div");
             cardContainer.className = "card-container";
 
+            // Показываем надпись "Winner" над победителем
             if (winnerName && playerId === winnerName) {
                 const winnerLabel = document.createElement("div");
                 winnerLabel.className = "winner-label";
@@ -265,12 +249,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 playerDiv.appendChild(winnerLabel);
             }
 
+            // Показываем надпись "Current" над текущим игроком
+            if (currentPlayer && playerId === currentPlayer && !winnerName) {
+                const currentLabel = document.createElement("div");
+                currentLabel.className = "current-label";
+                currentLabel.textContent = "Current";
+                playerDiv.appendChild(currentLabel);
+            }
+
             if (player.name === currentUsername) {
                 const hand = playerHands[player.name] || [];
                 updatePlayerHand(hand, true, cardContainer);
             } else {
                 if (winnerName && playerId === winnerName) {
-                    // Используем player.hand, если есть, или playerHands
                     const hand = player.hand && player.hand.length > 0 ? player.hand : (playerHands[playerId] || []);
                     updatePlayerHand(hand, true, cardContainer);
                 } else {

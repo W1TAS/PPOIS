@@ -134,6 +134,19 @@ body {
     z-index: 5;
 }
 
+.current-label {
+    position: absolute;
+    top: -2vh; /* Располагаем надпись над блоком игрока */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #ffc107; /* Жёлтый фон для текущего игрока */
+    color: #333;
+    padding: 0.5vh 1vw;
+    border-radius: 0.4vw;
+    font-size: 0.9vw;
+    z-index: 5;
+}
+
 #table-center {
     position: absolute;
     top: 50%;
@@ -147,22 +160,6 @@ body {
     width: auto;
     max-width: 90vw;
     box-sizing: border-box;
-}
-
-#current-player {
-    position: absolute;
-    top: 1vh;
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-    background-color: #fff3cd;
-    color: #856404;
-    padding: 0.5vh 1vw;
-    border-radius: 0.4vh;
-    font-size: 0.9vw;
-    z-index: 5;
-    width: 20vw;
-    max-width: 200px;
 }
 
 #player-info {
