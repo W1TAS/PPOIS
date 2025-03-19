@@ -271,7 +271,8 @@ class PokerGame:
         if not active_players:
             return None
         # Определяем победителя по лучшей комбинации
-        winner = max(active_players, key=lambda p: self.get_best_hand(p)) if len(active_players) > 1 else active_players[0]
+        winner = max(active_players, key=lambda p: self.get_best_hand(p)) if len(active_players) > 1 else \
+        active_players[0]
         # Распределяем банки и возвращаем лишние фишки
         total_won = 0
         for pot in reversed(self.pots):  # Начинаем с последнего банка
@@ -288,4 +289,8 @@ class PokerGame:
                             p.balance += refund_per_player
                             print(f"Refunded {refund_per_player} to {p.name} from pot {pot['amount']}")
         print(f"Winner {winner.name} won {total_won} from pots: {self.pots}")
-        return winner.name
+        # Возвращаем объект с именем и рукой
+        return {
+            "name": winner.name,
+            "hand": [str(card) for card in winner.hand]  # Преобразуем карты в строки
+        }

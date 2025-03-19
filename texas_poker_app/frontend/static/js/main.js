@@ -16,7 +16,10 @@ document.addEventListener("DOMContentLoaded", () => {
     let ws;
     let token = null;
     let username = null;
-    let playerBalances = {}; // Объект для хранения баланса игроков
+    let playerBalances = {};
+    let playerHands = {};
+    let currentWinner = null;
+    let gameEnded = false; // Добавляем флаг для отслеживания окончания игры
 
     function showGame() {
         console.log("Switching to game view");
@@ -75,58 +78,52 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = JSON.parse(event.data);
             console.log("Received WebSocket message:", data);
 
-            if (data.players && !data.stage) {
-                console.log("Pre-game state");
-                // Сохраняем баланс игроков
-                data.players.forEach(player => {
-                    playerBalances[player.player_id] = player.balance || 0;
-                });
-                updatePlayerList(data.players, username);
-                document.getElementById("ready-button").style.display = "block";
-                document.getElementById("action-bar").style.display = "none";
-                document.getElementById("table-center").style.display = "none";
-                document.getElementById("player-info").style.display = "none";
-                document.getElementById("player-hand").textContent = "";
-                document.getElementById("community-cards").textContent = "";
-                document.getElementById("pot").textContent = "";
-                document.getElementById("balance").textContent = "";
-                document.getElementById("current-player").textContent = "";
-                document.getElementById("winner").style.display = "none";
-            }
-
             if (data.stage) {
                 console.log("Game state");
                 document.getElementById("table-center").style.display = "block";
                 document.getElementById("player-info").style.display = "flex";
                 document.getElementById("stage").textContent = `Stage: ${data.stage}`;
-                document.getElementById("player-hand").textContent = `Your hand: ${data.hand.join(", ")}`;
-                document.getElementById("community-cards").textContent = `Community: ${data.community_cards.join(", ")}`;
 
-                if (data.pots) {
-                    const total_pot = data.pots.reduce((sum, pot) => sum + pot.amount, 0);
-                    document.getElementById("pot").textContent = `Pot: ${total_pot} (${data.pots.map(p => p.amount).join(" | ")})`;
-                } else {
-                    document.getElementById("pot").textContent = "Pot: 0";
+                // Обновляем карты и пот только если игра не закончилась
+                if (!gameEnded) {
+                    updatePlayerHand(data.hand, username === data.current_player);
+                    updateCommunityCards(data.community_cards, data.stage);
+                    if (data.pots) {
+                        const total_pot = data.pots.reduce((sum, pot) => sum + pot.amount, 0);
+                        document.getElementById("pot").textContent = `Pot: ${total_pot} (${data.pots.map(p => p.amount).join(" | ")})`;
+                    } else {
+                        document.getElementById("pot").textContent = "Pot: 0";
+                    }
                 }
 
-                // Обновляем баланс текущего игрока
                 playerBalances[username] = data.balance || 0;
-                // Обновляем баланс остальных игроков, если сервер передал их
                 if (data.players) {
                     data.players.forEach(player => {
                         if (player.balance !== undefined) {
                             playerBalances[player.name] = player.balance;
                         }
+                        if (player.name === username && data.hand) {
+                            playerHands[player.name] = data.hand;
+                        }
                     });
                 }
 
-                document.getElementById("balance").innerHTML = `${username} <span>${playerBalances[username]}</span>`; // Имя и баланс
+                document.getElementById("balance").innerHTML = `${username} <span>${playerBalances[username]}</span>`;
                 document.getElementById("current-player").textContent = `Current: ${data.current_player}`;
-                updatePlayerList(data.players, username);
+                updatePlayerList(data.players, username, data.stage === "showdown" ? currentWinner : null);
                 document.getElementById("ready-button").style.display = "none";
                 const isActivePlayer = data.current_player === username && !data.players.find(p => p.name === username)?.folded;
-                document.getElementById("action-bar").style.display = isActivePlayer ? "flex" : "none";
-                toggleButtons(isActivePlayer);
+                console.log(`Current player: ${data.current_player}, isActivePlayer: ${isActivePlayer}`);
+                if (!gameEnded && data.stage !== "showdown") {
+                    document.getElementById("action-bar").style.display = isActivePlayer ? "flex" : "none";
+                    toggleButtons(isActivePlayer);
+                } else {
+                    document.getElementById("action-bar").style.display = "none";
+                    toggleButtons(false);
+                    document.getElementById("ready-button").style.display = "block";
+                    document.getElementById("table-center").style.display = "block";
+                    document.getElementById("player-info").style.display = "flex";
+                }
                 const betAmount = document.getElementById("bet-amount");
                 if (betAmount) {
                     betAmount.max = data.balance;
@@ -134,13 +131,59 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
+            // Обработка победителя
             if (data.winner) {
-                console.log("Winner state");
-                document.getElementById("winner").style.display = "block";
-                document.getElementById("winner").textContent = `Winner: ${data.winner}`;
+                console.log("Winner state:", data.winner);
+                gameEnded = true; // Устанавливаем флаг окончания игры
+                const winnerName = typeof data.winner === "object" ? (data.winner.name || data.winner.player_id) : data.winner;
+                currentWinner = winnerName;
+                if (data.players) {
+                    updatePlayerList(data.players, username, currentWinner);
+                    data.players.forEach(player => {
+                        if (player.balance !== undefined) {
+                            playerBalances[player.name] = player.balance; // Обновляем баланс для всех игроков
+                        }
+                        if (player.hand) {
+                            playerHands[player.name] = player.hand; // Сохраняем карты всех игроков
+                        }
+                    });
+                } else {
+                    console.warn("No players data with winner message");
+                }
                 toggleButtons(false);
                 document.getElementById("action-bar").style.display = "none";
                 document.getElementById("ready-button").style.display = "block";
+            }
+
+            // Сбрасываем состояние при готовности всех игроков
+            if (data.all_ready && data.all_ready === true) {
+                console.log("All players ready, resetting full state");
+                gameEnded = false; // Сбрасываем флаг окончания игры
+                currentWinner = null;
+                document.getElementById("player-hand").innerHTML = "";
+                document.getElementById("community-cards").innerHTML = "";
+                document.getElementById("pot").textContent = "";
+                document.getElementById("balance").textContent = "";
+                document.getElementById("current-player").textContent = "";
+                document.getElementById("table-center").style.display = "none";
+                document.getElementById("player-info").style.display = "none";
+                document.getElementById("action-bar").style.display = "none";
+                if (data.players) {
+                    data.players.forEach(player => {
+                        playerBalances[player.name] = player.balance || 0;
+                    });
+                    updatePlayerList(data.players, username, currentWinner);
+                }
+            } else if (data.players && !data.stage && !data.winner && !data.all_ready) {
+                console.log("Pre-game state without winner, stage, or all ready");
+                gameEnded = false; // Сбрасываем флаг окончания игры
+                data.players.forEach(player => {
+                    playerBalances[player.name] = player.balance || 0;
+                });
+                updatePlayerList(data.players, username, currentWinner);
+                document.getElementById("ready-button").style.display = "block";
+                document.getElementById("action-bar").style.display = "none";
+                toggleButtons(false);
             }
 
             if (data.error) {
@@ -153,7 +196,25 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
-    function updatePlayerList(players, currentUsername) {
+    function normalizeCardName(card) {
+        if (!card) return "card_back_black";
+        const suitMap = {
+            '♠': 'spades',
+            '♥': 'hearts',
+            '♦': 'diamonds',
+            '♣': 'clubs'
+        };
+        const value = card.replace(/[♠♥♦♣]/g, '');
+        const suit = card.match(/[♠♥♦♣]/)?.[0] || 'spades';
+        return `${suitMap[suit]}_${value.toLowerCase()}`;
+    }
+
+    function updatePlayerList(players, currentUsername, winnerName = null) {
+        const gameContainer = document.getElementById("game-container");
+        if (!gameContainer) {
+            console.error("Element #game-container not found in DOM");
+            return;
+        }
         const playerCircle = document.getElementById("player-circle");
         if (!playerCircle) {
             console.error("Element #player-circle not found in DOM");
@@ -161,10 +222,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         playerCircle.innerHTML = "";
 
-        const containerWidth = playerCircle.offsetWidth;
-        const containerHeight = playerCircle.offsetHeight;
-        const aspectRatio = containerWidth / containerHeight; // Возвращаем aspectRatio
-        const radius = Math.min(containerWidth, containerHeight) * 0.3;
+        const containerWidth = gameContainer.offsetWidth;
+        const containerHeight = gameContainer.offsetHeight;
+        const aspectRatio = containerWidth / containerHeight;
+        const radius = Math.min(containerWidth, containerHeight) * 0.35;
 
         const centerX = containerWidth / 2;
         const centerY = containerHeight / 2;
@@ -179,13 +240,13 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         reorderedPlayers.forEach((player, index) => {
-            const angleDeg = 270 - (360 / totalPlayers) * index;
+            const angleDeg = 90 + (360 / totalPlayers) * index;
             const angleRad = (angleDeg * Math.PI) / 180;
             const xOffset = radius * Math.cos(angleRad) * aspectRatio;
             const yOffset = radius * Math.sin(angleRad);
 
             const xPercent = ((centerX + xOffset) / containerWidth) * 100;
-            const yPercent = ((centerY - yOffset) / containerHeight) * 100;
+            const yPercent = ((centerY + yOffset) / containerHeight) * 100;
 
             const playerDiv = document.createElement("div");
             playerDiv.className = "player";
@@ -193,14 +254,102 @@ document.addEventListener("DOMContentLoaded", () => {
             playerDiv.style.top = `${yPercent}%`;
 
             const playerId = player.player_id || player.name;
-            const balance = playerBalances[playerId] || 0; // Используем сохранённый баланс
-            if (player.ready !== undefined) {
-                playerDiv.innerHTML = `${playerId}<br>${player.ready ? "Ready" : "Not Ready"}<br><span class="balance">${balance}</span>`;
-            } else {
-                playerDiv.innerHTML = `${player.name}<br><span class="balance">${balance}</span>${player.bet ? `<br>Bet: ${player.bet}` : ""}${player.folded ? "<br>Folded" : ""}`;
+            const balance = playerBalances[playerId] || 0;
+            const cardContainer = document.createElement("div");
+            cardContainer.className = "card-container";
+
+            if (winnerName && playerId === winnerName) {
+                const winnerLabel = document.createElement("div");
+                winnerLabel.className = "winner-label";
+                winnerLabel.textContent = "Winner";
+                playerDiv.appendChild(winnerLabel);
             }
+
+            if (player.name === currentUsername) {
+                const hand = playerHands[player.name] || [];
+                updatePlayerHand(hand, true, cardContainer);
+            } else {
+                if (winnerName && playerId === winnerName) {
+                    // Используем player.hand, если есть, или playerHands
+                    const hand = player.hand && player.hand.length > 0 ? player.hand : (playerHands[playerId] || []);
+                    updatePlayerHand(hand, true, cardContainer);
+                } else {
+                    for (let i = 0; i < 2; i++) {
+                        const img = document.createElement("img");
+                        img.src = "/static/images/card_back_black.png";
+                        cardContainer.appendChild(img);
+                    }
+                }
+            }
+
+            if (player.ready !== undefined) {
+                playerDiv.innerHTML += `${playerId}<br>${player.ready ? "Ready" : "Not Ready"}<br><span class="balance">${balance}</span>`;
+            } else {
+                playerDiv.innerHTML += `${playerId}<br><span class="balance">${balance}</span>`;
+            }
+            playerDiv.appendChild(cardContainer);
             playerCircle.appendChild(playerDiv);
         });
+    }
+
+    function updatePlayerHand(hand, isCurrentPlayer, container = document.getElementById("player-hand")) {
+        container.innerHTML = "";
+        if (hand && isCurrentPlayer) {
+            hand.forEach(card => {
+                const normalizedCard = normalizeCardName(card);
+                const img = document.createElement("img");
+                img.src = `/static/images/${normalizedCard}.png`;
+                img.onerror = () => console.error(`Failed to load card: ${normalizedCard}.png`);
+                container.appendChild(img);
+            });
+        } else if (!isCurrentPlayer) {
+            for (let i = 0; i < 2; i++) {
+                const img = document.createElement("img");
+                img.src = "/static/images/card_back_black.png";
+                container.appendChild(img);
+            }
+        }
+    }
+
+    function updateCommunityCards(cards, stage) {
+        const container = document.getElementById("community-cards");
+        container.innerHTML = "";
+        for (let i = 0; i < 5; i++) {
+            const img = document.createElement("img");
+            img.src = "/static/images/card_back_black.png";
+            container.appendChild(img);
+        }
+
+        const visibleCards = cards || [];
+        console.log("Community cards received:", visibleCards);
+        visibleCards.forEach((card, index) => {
+            if (card) {
+                const normalizedCard = normalizeCardName(card);
+                const img = container.children[index];
+                img.src = `/static/images/${normalizedCard}.png`;
+                img.onerror = () => console.error(`Failed to load community card: ${normalizedCard}.png`);
+            }
+        });
+
+        if (stage === "Flop" && visibleCards.length >= 3) {
+            for (let i = 0; i < 3; i++) {
+                const normalizedCard = normalizeCardName(visibleCards[i]);
+                container.children[i].src = `/static/images/${normalizedCard}.png`;
+                container.children[i].onerror = () => console.error(`Failed to load Flop card ${i}: ${normalizedCard}.png`);
+            }
+        } else if (stage === "Turn" && visibleCards.length >= 4) {
+            for (let i = 0; i < 4; i++) {
+                const normalizedCard = normalizeCardName(visibleCards[i]);
+                container.children[i].src = `/static/images/${normalizedCard}.png`;
+                container.children[i].onerror = () => console.error(`Failed to load Turn card ${i}: ${normalizedCard}.png`);
+            }
+        } else if (stage === "River" && visibleCards.length === 5) {
+            for (let i = 0; i < 5; i++) {
+                const normalizedCard = normalizeCardName(visibleCards[i]);
+                container.children[i].src = `/static/images/${normalizedCard}.png`;
+                container.children[i].onerror = () => console.error(`Failed to load River card ${i}: ${normalizedCard}.png`);
+            }
+        }
     }
 
     function toggleButtons(enabled) {
