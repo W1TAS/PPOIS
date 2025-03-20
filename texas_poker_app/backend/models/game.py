@@ -71,6 +71,8 @@ class PokerGame:
         self.small_blind = 10   # Размер Small Blind
         self.big_blind = 20     # Размер Big Blind
 
+    # models/game.py (фрагмент)
+
     def start_new_round(self):
         self.deck = Deck()
         self.deck.shuffle()
@@ -85,15 +87,16 @@ class PokerGame:
         for player in self.players:
             player.current_bet = 0
 
-        # Перемещаем дилера (если игра новая, начинаем с 0)
+        # Перемещаем дилера
         self.dealer_index = (self.dealer_index + 1) % len(self.players) if self.dealer_index >= 0 else 0
+        print(f"New dealer_index: {self.dealer_index}")  # Лог для отладки
 
-        # Определяем Small Blind и Big Blind
+        # Определяем Small Blind и Big Blind на основе dealer_index
         small_blind_index = (self.dealer_index + 1) % len(self.players)
         big_blind_index = (self.dealer_index + 2) % len(self.players)
 
         # Снимаем Small Blind
-        if len(self.players) > 1:  # Убедимся, что есть достаточно игроков
+        if len(self.players) > 1:
             self.players[small_blind_index].place_bet(self.small_blind)
             self.update_pots(self.small_blind, self.players[small_blind_index])
 
@@ -119,8 +122,10 @@ class PokerGame:
             return True
         # Находим максимальную ставку среди активных игроков
         max_bet = max(p.current_bet for p in active_players)
-        bets_settled = all(p.current_bet == max_bet or p.balance == 0 or p.folded for p in self.players)
+        # Проверяем, уравняли ли все активные игроки максимальную ставку
+        bets_settled = all(p.current_bet == max_bet or p.balance == 0 for p in active_players)
         round_completed = self.actions_taken >= len(active_players)
+        print(f"can_advance_stage: bets_settled={bets_settled}, round_completed={round_completed}, max_bet={max_bet}")
         return bets_settled and round_completed
 
     def advance_stage(self):
@@ -165,6 +170,7 @@ class PokerGame:
             total_bet = player.current_bet + amount
         player.place_bet(amount)
         self.update_pots(amount, player)
+        self.current_bet = max(p.current_bet for p in self.players)  # Обновляем текущую ставку
         self.current_player_index = self.next_active_player(player_index)
         self.actions_taken += 1
         return True
@@ -173,7 +179,6 @@ class PokerGame:
         player = self.players[player_index]
         if player.folded or player_index != self.current_player_index:
             return False
-        # Находим максимальную ставку среди всех игроков
         max_bet = max(p.current_bet for p in self.players)
         difference = max_bet - player.current_bet
         if difference > 0:
@@ -184,6 +189,7 @@ class PokerGame:
             else:
                 player.place_bet(difference)
                 self.update_pots(difference, player)
+        self.current_bet = max(p.current_bet for p in self.players)  # Обновляем текущую ставку
         self.current_player_index = self.next_active_player(player_index)
         self.actions_taken += 1
         return True
@@ -203,6 +209,7 @@ class PokerGame:
         amount = player.balance
         player.place_bet(amount)
         self.update_pots(amount, player)
+        self.current_bet = max(p.current_bet for p in self.players)  # Обновляем текущую ставку
         self.current_player_index = self.next_active_player(player_index)
         self.actions_taken += 1
         return True
