@@ -12,6 +12,7 @@ class ConnectionManager:
         self.active_connections = {}  # {websocket: {"player_id": str, "ready": bool, "index": int}}
         self.game = None
         self.players = {}  # {player_id: Player}
+        self.last_dealer_index = -1  # Добавляем поле для хранения последнего dealer_index
 
     async def connect(self, websocket: WebSocket, player_id: str):
         await websocket.accept()
@@ -26,6 +27,7 @@ class ConnectionManager:
             del self.active_connections[websocket]
             if not self.active_connections:
                 self.game = None
+                self.last_dealer_index = -1  # Сбрасываем last_dealer_index
             elif self.game:
                 player_index = next((i for i, conn in enumerate(self.active_connections.values()) if conn["player_id"] == player_id), -1)
                 if player_index >= 0:
@@ -36,20 +38,22 @@ class ConnectionManager:
     async def broadcast_state(self):
         if not self.active_connections:
             return
+        num_players = len(self.active_connections)
         state = {
             "players": [
                 {
                     "player_id": data["player_id"],
                     "ready": data["ready"],
                     "balance": self.players[data["player_id"]].balance,
-                    "is_dealer": False,  # До начала игры дилер не определён
-                    "is_small_blind": False,
-                    "is_big_blind": False,
+                    "is_dealer": self.last_dealer_index >= 0 and idx == (self.last_dealer_index + 1) % num_players,  # Следующий дилер
+                    "is_small_blind": self.last_dealer_index >= 0 and idx == (self.last_dealer_index + 2) % num_players,
+                    "is_big_blind": self.last_dealer_index >= 0 and idx == (self.last_dealer_index + 3) % num_players,
                 }
-                for data in self.active_connections.values()
+                for idx, data in enumerate(self.active_connections.values())
             ],
             "game_active": bool(self.game)
         }
+        print(f"Broadcasting state: {state}")  # Добавляем лог для отладки
         all_ready = all(data["ready"] for data in self.active_connections.values())
         if all_ready and len(self.active_connections) > 1 and not self.game:
             await self.start_game()
@@ -60,22 +64,22 @@ class ConnectionManager:
                 except Exception as e:
                     print(f"Error sending state to {self.active_connections[websocket]['player_id']}: {e}")
 
-    # routes/game.py (фрагмент метода start_game)
-
     async def start_game(self):
         player_ids = [data["player_id"] for data in self.active_connections.values()]
         print(f"Player IDs in start_game: {player_ids}")
 
         # Сохраняем текущий dealer_index, если игра уже была
-        previous_dealer_index = self.game.dealer_index if self.game else -1
+        if self.game:
+            self.last_dealer_index = self.game.dealer_index
+        print(f"Last dealer_index before new game: {self.last_dealer_index}")
 
         # Создаём новую игру
         self.game = PokerGame([])
         self.game.players = [self.players[player_id] for player_id in player_ids]
 
         # Устанавливаем dealer_index перед началом нового раунда
-        if previous_dealer_index >= 0:
-            self.game.dealer_index = previous_dealer_index
+        if self.last_dealer_index >= 0:
+            self.game.dealer_index = self.last_dealer_index
         else:
             self.game.dealer_index = 0  # Устанавливаем начальное значение, если игра новая
 
@@ -140,6 +144,8 @@ class ConnectionManager:
         self.active_connections[websocket]["ready"] = True
         all_ready = all(data["ready"] for data in self.active_connections.values())
         if all_ready:
+            # Сохраняем dealer_index перед сбросом игры
+            self.last_dealer_index = self.game.dealer_index
             self.game = None  # Сбрасываем игру
             state = {
                 "all_ready": True,
@@ -148,13 +154,14 @@ class ConnectionManager:
                         "player_id": data["player_id"],
                         "ready": False,
                         "balance": self.players[data["player_id"]].balance,
-                        "is_dealer": False,
-                        "is_small_blind": False,
-                        "is_big_blind": False,
+                        "is_dealer": self.last_dealer_index >= 0 and idx == (self.last_dealer_index + 1) % len(self.active_connections),
+                        "is_small_blind": self.last_dealer_index >= 0 and idx == (self.last_dealer_index + 2) % len(self.active_connections),
+                        "is_big_blind": self.last_dealer_index >= 0 and idx == (self.last_dealer_index + 3) % len(self.active_connections),
                     }
-                    for data in self.active_connections.values()
+                    for idx, data in enumerate(self.active_connections.values())
                 ]
             }
+            print(f"All ready state: {state}")  # Добавляем лог для отладки
             for ws in self.active_connections:
                 try:
                     await ws.send_text(json.dumps(state))
@@ -169,10 +176,9 @@ class ConnectionManager:
                 player_index = list(self.active_connections.values()).index(data)
                 game_state = self.game.get_game_state(player_index)
                 # Добавляем ready в game_state
-                for player in game_state["players"]:
+                for i, player in enumerate(game_state["players"]):
                     player["balance"] = self.players[player["name"]].balance
-                    player["ready"] = self.active_connections[list(self.active_connections.keys())[player_index]][
-                        "ready"]
+                    player["ready"] = list(self.active_connections.values())[i]["ready"]
                 try:
                     await ws.send_text(json.dumps(game_state))
                 except Exception as e:

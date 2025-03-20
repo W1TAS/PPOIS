@@ -76,124 +76,131 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         ws.onmessage = function(event) {
-    const data = JSON.parse(event.data);
-    console.log("Received WebSocket message:", data);
+            const data = JSON.parse(event.data);
+            console.log("Received WebSocket message:", data);
 
-    // Обновляем баланс в состоянии "Pre-game"
-    if (data.players && !data.stage && !data.winner && !data.all_ready) {
-            console.log("Pre-game state without winner, stage, or all ready");
-            gameEnded = false;
-            data.players.forEach(player => {
-                playerBalances[player.player_id] = player.balance !== undefined ? player.balance : (playerBalances[player.player_id] || 0);
-                console.log(`Updated playerBalances[${player.player_id}] = ${playerBalances[player.player_id]}`);
-            });
-            updatePlayerList(data.players, username, currentWinner);
-            document.getElementById("ready-button").style.display = "block";
-            document.getElementById("action-bar").style.display = "none";
-            toggleButtons(false);
-            document.getElementById("table-center").style.display = "none";
-            document.getElementById("player-info").style.display = "none";
-        }
-
-        // Обновляем баланс в состоянии "All ready"
-        if (data.all_ready) {
-        console.log("All players ready, resetting game state");
-        gameEnded = false;
-        currentWinner = null;
-        currentPlayer = null;
-        playerHands = {};
-        document.getElementById("table-center").style.display = "none";
-        document.getElementById("player-info").style.display = "none";
-        document.getElementById("action-bar").style.display = "none";
-        document.getElementById("ready-button").style.display = "block";
-        toggleButtons(false);
-        if (data.players) {
-            data.players.forEach(player => {
-                playerBalances[player.player_id] = player.balance !== undefined ? player.balance : (playerBalances[player.player_id] || 0);
-                console.log(`Updated playerBalances[${player.player_id}] = ${playerBalances[player.player_id]}`);
-            });
-            updatePlayerList(data.players, username, null);
-        }
-    }
-
-    // Обновляем баланс в состоянии игры
-    if (data.stage) {
-    console.log("Game state");
-    document.getElementById("table-center").style.display = "block";
-    document.getElementById("player-info").style.display = "flex";
-    document.getElementById("stage").textContent = `Stage: ${data.stage}`;
-
-    if (!gameEnded) {
-        updatePlayerHand(data.hand, username === data.current_player);
-        updateCommunityCards(data.community_cards, data.stage);
-        if (data.pots) {
-            const total_pot = data.pots.reduce((sum, pot) => sum + pot.amount, 0);
-            document.getElementById("pot").textContent = `Pot: ${total_pot} (${data.pots.map(p => p.amount).join(" | ")})`;
-        } else {
-            document.getElementById("pot").textContent = "Pot: 0";
-        }
-    }
-
-    // Обновляем баланс для всех игроков
-    if (data.players) {
-        data.players.forEach(player => {
-            playerBalances[player.name] = player.balance !== undefined ? player.balance : (playerBalances[player.name] || 0);
-            console.log(`Updated playerBalances[${player.name}] = ${playerBalances[player.name]}`);
-            if (player.name === username && data.hand) {
-                playerHands[player.name] = data.hand;
+            // Обновляем баланс в состоянии "Pre-game"
+            if (data.players && !data.stage && !data.winner && !data.all_ready) {
+                console.log("Pre-game state without winner, stage, or all ready");
+                gameEnded = false;
+                data.players.forEach(player => {
+                    playerBalances[player.player_id] = player.balance !== undefined ? player.balance : (playerBalances[player.player_id] || 0);
+                    console.log(`Updated playerBalances[${player.player_id}] = ${playerBalances[player.player_id]}`);
+                });
+                updatePlayerList(data.players, username, currentWinner);
+                document.getElementById("ready-button").style.display = "block";
+                document.getElementById("action-bar").style.display = "none";
+                toggleButtons(false);
+                document.getElementById("table-center").style.display = "none";
+                document.getElementById("player-info").style.display = "none";
             }
-        });
-    }
 
-    document.getElementById("balance").innerHTML = `${username} <span>${playerBalances[username]}</span>`;
-    currentPlayer = data.current_player;
-    updatePlayerList(data.players, username, data.stage === "showdown" ? currentWinner : null);
-    document.getElementById("ready-button").style.display = "none";
-    const isActivePlayer = data.current_player === username && !data.players.find(p => p.name === username)?.folded;
-    console.log(`Current player: ${data.current_player}, isActivePlayer: ${isActivePlayer}, gameEnded: ${gameEnded}, stage: ${data.stage}`);
-    if (data.stage && data.stage !== "showdown" && isActivePlayer) {
-        document.getElementById("action-bar").style.display = "flex";
-        toggleButtons(true);
-    } else {
-        document.getElementById("action-bar").style.display = "none";
-        toggleButtons(false);
-        if (data.stage === "showdown") {
-            document.getElementById("ready-button").style.display = "block";
-            document.getElementById("table-center").style.display = "block";
-            document.getElementById("player-info").style.display = "flex";
-        }
-    }
-    const betAmount = document.getElementById("bet-amount");
-    if (betAmount) {
-        betAmount.max = data.balance;
-        betAmount.min = data.current_bet + 1 || 1;
-    }
-}
-
-    // Обновляем баланс в состоянии победителя
-    if (data.winner) {
-        console.log("Winner state:", data.winner);
-        gameEnded = true;
-        const winnerName = typeof data.winner === "object" ? (data.winner.name || data.winner.player_id) : data.winner;
-        currentWinner = winnerName;
-        currentPlayer = null;
-        if (data.players) {
-            data.players.forEach(player => {
-                playerBalances[player.name] = player.balance;
-                console.log(`Updated playerBalances[${player.name}] = ${player.balance}`);
-                if (player.hand) {
-                    playerHands[player.name] = player.hand;
+            // Обновляем баланс в состоянии "All ready"
+            if (data.all_ready) {
+                console.log("All players ready, resetting game state");
+                gameEnded = false;
+                currentWinner = null;
+                currentPlayer = null;
+                playerHands = {};
+                document.getElementById("table-center").style.display = "none";
+                document.getElementById("player-info").style.display = "none";
+                document.getElementById("action-bar").style.display = "none";
+                document.getElementById("ready-button").style.display = "block";
+                toggleButtons(false);
+                if (data.players) {
+                    data.players.forEach(player => {
+                        playerBalances[player.player_id] = player.balance !== undefined ? player.balance : (playerBalances[player.player_id] || 0);
+                        console.log(`Updated playerBalances[${player.player_id}] = ${playerBalances[player.player_id]}`);
+                    });
+                    updatePlayerList(data.players, username, null);
                 }
-            });
-            updatePlayerList(data.players, username, currentWinner);
-        } else {
-            console.warn("No players data with winner message");
-        }
-        toggleButtons(false);
-        document.getElementById("action-bar").style.display = "none";
-        document.getElementById("ready-button").style.display = "block";
-    }
-};
+            }
+
+            // Обновляем баланс в состоянии игры
+            if (data.stage) {
+                console.log("Game state");
+                document.getElementById("table-center").style.display = "block";
+                document.getElementById("player-info").style.display = "flex";
+                document.getElementById("stage").textContent = `Stage: ${data.stage}`;
+
+                if (!gameEnded) {
+                    updatePlayerHand(data.hand, username === data.current_player);
+                    updateCommunityCards(data.community_cards, data.stage);
+                    if (data.pots) {
+                        const total_pot = data.pots.reduce((sum, pot) => sum + pot.amount, 0);
+                        document.getElementById("pot").textContent = `Pot: ${total_pot} (${data.pots.map(p => p.amount).join(" | ")})`;
+                    } else {
+                        document.getElementById("pot").textContent = "Pot: 0";
+                    }
+                }
+
+                // Обновляем баланс текущего игрока из data.balance
+                if (data.balance !== undefined) {
+                    playerBalances[username] = data.balance;
+                    console.log(`Updated playerBalances[${username}] = ${playerBalances[username]} from data.balance`);
+                }
+
+                // Обновляем баланс для всех игроков из data.players
+                if (data.players) {
+                    data.players.forEach(player => {
+                        playerBalances[player.name] = player.balance !== undefined ? player.balance : (playerBalances[player.name] || 0);
+                        console.log(`Updated playerBalances[${player.name}] = ${playerBalances[player.name]} from data.players`);
+                        if (player.name === username && data.hand) {
+                            playerHands[player.name] = data.hand;
+                        }
+                    });
+                }
+
+                // Обновляем отображение баланса текущего игрока
+                document.getElementById("balance").innerHTML = `${username} <span>${playerBalances[username]}</span>`;
+                currentPlayer = data.current_player;
+                updatePlayerList(data.players, username, data.stage === "showdown" ? currentWinner : null);
+                document.getElementById("ready-button").style.display = "none";
+                const isActivePlayer = data.current_player === username && !data.players.find(p => p.name === username)?.folded;
+                console.log(`Current player: ${data.current_player}, isActivePlayer: ${isActivePlayer}, gameEnded: ${gameEnded}, stage: ${data.stage}`);
+                if (data.stage && data.stage !== "showdown" && isActivePlayer) {
+                    document.getElementById("action-bar").style.display = "flex";
+                    toggleButtons(true);
+                } else {
+                    document.getElementById("action-bar").style.display = "none";
+                    toggleButtons(false);
+                    if (data.stage === "showdown") {
+                        document.getElementById("ready-button").style.display = "block";
+                        document.getElementById("table-center").style.display = "block";
+                        document.getElementById("player-info").style.display = "flex";
+                    }
+                }
+                const betAmount = document.getElementById("bet-amount");
+                if (betAmount) {
+                    betAmount.max = data.balance;
+                    betAmount.min = data.current_bet + 1 || 1;
+                }
+            }
+
+            // Обновляем баланс в состоянии победителя
+            if (data.winner) {
+                console.log("Winner state:", data.winner);
+                gameEnded = true;
+                const winnerName = typeof data.winner === "object" ? (data.winner.name || data.winner.player_id) : data.winner;
+                currentWinner = winnerName;
+                currentPlayer = null;
+                if (data.players) {
+                    data.players.forEach(player => {
+                        playerBalances[player.name] = player.balance;
+                        console.log(`Updated playerBalances[${player.name}] = ${playerBalances[player.name]} from winner state`);
+                        if (player.hand) {
+                            playerHands[player.name] = player.hand;
+                        }
+                    });
+                    updatePlayerList(data.players, username, currentWinner);
+                } else {
+                    console.warn("No players data with winner message");
+                }
+                toggleButtons(false);
+                document.getElementById("action-bar").style.display = "none";
+                document.getElementById("ready-button").style.display = "block";
+            }
+        };
 
         ws.onclose = () => {
             console.log("WebSocket disconnected");
