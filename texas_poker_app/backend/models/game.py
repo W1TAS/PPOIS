@@ -128,6 +128,8 @@ class PokerGame:
         print(f"can_advance_stage: bets_settled={bets_settled}, round_completed={round_completed}, max_bet={max_bet}")
         return bets_settled and round_completed
 
+    # models/game.py (фрагмент)
+
     def advance_stage(self):
         if not self.can_advance_stage():
             return False
@@ -140,7 +142,14 @@ class PokerGame:
                 self.revealed_cards = self.community_cards[:4]
             elif self.stage == "river" or self.stage == "showdown":
                 self.revealed_cards = self.community_cards[:5]
-            self.current_player_index = self.next_active_player(-1)
+
+            # На стадиях flop, turn, river первым ходит Small Blind (игрок после дилера)
+            if self.stage in ["flop", "turn", "river"]:
+                small_blind_index = (self.dealer_index + 1) % len(self.players)
+                self.current_player_index = self.next_active_player(small_blind_index - 1)
+            else:
+                self.current_player_index = self.next_active_player(-1)
+
             self.actions_taken = 0
             self.current_bet = 0  # Сбрасываем текущую ставку
             for player in self.players:
