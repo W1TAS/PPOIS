@@ -307,3 +307,29 @@ button:disabled {
     object-fit: contain;
     border-radius: 0.2vw;
 }
+
+.dealer-label {
+    position: absolute;
+    top: -4vh;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #007bff; /* Синий фон для дилера */
+    color: white;
+    padding: 0.5vh 1vw;
+    border-radius: 0.4vw;
+    font-size: 0.9vw;
+    z-index: 5;
+}
+
+.blind-label {
+    position: absolute;
+    top: 4vh;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #6c757d; /* Серый фон для блайндов */
+    color: white;
+    padding: 0.5vh 1vw;
+    border-radius: 0.4vw;
+    font-size: 0.9vw;
+    z-index: 5;
+}

@@ -67,6 +67,9 @@ class PokerGame:
         self.stage = "preflop"
         self.current_player_index = 0
         self.actions_taken = 0
+        self.dealer_index = -1  # Добавляем позицию дилера
+        self.small_blind = 10   # Размер Small Blind
+        self.big_blind = 20     # Размер Big Blind
 
     def start_new_round(self):
         self.deck = Deck()
@@ -76,18 +79,47 @@ class PokerGame:
         self.pots = [{"amount": 0, "eligible_players": [p.name for p in self.players]}]
         self.current_bet = 0
         self.stage = "preflop"
-        self.current_player_index = 0
         self.actions_taken = 0
+
+        # Сбрасываем ставки игроков
+        for player in self.players:
+            player.current_bet = 0
+
+        # Перемещаем дилера (если игра новая, начинаем с 0)
+        self.dealer_index = (self.dealer_index + 1) % len(self.players) if self.dealer_index >= 0 else 0
+
+        # Определяем Small Blind и Big Blind
+        small_blind_index = (self.dealer_index + 1) % len(self.players)
+        big_blind_index = (self.dealer_index + 2) % len(self.players)
+
+        # Снимаем Small Blind
+        if len(self.players) > 1:  # Убедимся, что есть достаточно игроков
+            self.players[small_blind_index].place_bet(self.small_blind)
+            self.update_pots(self.small_blind, self.players[small_blind_index])
+
+        # Снимаем Big Blind
+        if len(self.players) > 1:
+            self.players[big_blind_index].place_bet(self.big_blind)
+            self.update_pots(self.big_blind, self.players[big_blind_index])
+
+        # Устанавливаем текущего игрока (после Big Blind)
+        self.current_player_index = (big_blind_index + 1) % len(self.players) if len(self.players) > 1 else 0
+
+        # Раздаём карты
         for player in self.players:
             player.hand = [self.deck.deal_card(), self.deck.deal_card()]
             player.folded = False
-            player.reset_bet()
+
+        # Обновляем self.current_bet после блайндов
+        self.current_bet = max(p.current_bet for p in self.players)
 
     def can_advance_stage(self):
         active_players = [p for p in self.players if not p.folded]
         if len(active_players) <= 1:
             return True
-        bets_settled = all(p.current_bet == self.current_bet or p.balance == 0 or p.folded for p in self.players)
+        # Находим максимальную ставку среди активных игроков
+        max_bet = max(p.current_bet for p in active_players)
+        bets_settled = all(p.current_bet == max_bet or p.balance == 0 or p.folded for p in self.players)
         round_completed = self.actions_taken >= len(active_players)
         return bets_settled and round_completed
 
@@ -105,6 +137,10 @@ class PokerGame:
                 self.revealed_cards = self.community_cards[:5]
             self.current_player_index = self.next_active_player(-1)
             self.actions_taken = 0
+            self.current_bet = 0  # Сбрасываем текущую ставку
+            for player in self.players:
+                if not player.folded:
+                    player.current_bet = 0  # Сбрасываем ставки игроков
             return True
         return False
 
@@ -129,7 +165,6 @@ class PokerGame:
             total_bet = player.current_bet + amount
         player.place_bet(amount)
         self.update_pots(amount, player)
-        self.current_bet = max(self.current_bet, total_bet)
         self.current_player_index = self.next_active_player(player_index)
         self.actions_taken += 1
         return True
@@ -138,7 +173,9 @@ class PokerGame:
         player = self.players[player_index]
         if player.folded or player_index != self.current_player_index:
             return False
-        difference = self.current_bet - player.current_bet
+        # Находим максимальную ставку среди всех игроков
+        max_bet = max(p.current_bet for p in self.players)
+        difference = max_bet - player.current_bet
         if difference > 0:
             if difference > player.balance:
                 amount = player.balance
@@ -166,12 +203,22 @@ class PokerGame:
         amount = player.balance
         player.place_bet(amount)
         self.update_pots(amount, player)
-        self.current_bet = max(self.current_bet, player.current_bet)
         self.current_player_index = self.next_active_player(player_index)
         self.actions_taken += 1
         return True
 
     def update_pots(self, amount, player):
+        # Убедимся, что у нас есть хотя бы один банк
+        if not self.pots:
+            self.pots = [{"amount": 0, "eligible_players": [p.name for p in self.players if not p.folded]}]
+
+        # Находим текущую максимальную ставку среди всех игроков
+        max_bet = max(p.current_bet for p in self.players)
+
+        # Обновляем self.current_bet, чтобы он отражал максимальную ставку
+        self.current_bet = max_bet
+
+        # Создаём новые банки на основе текущих ставок
         bets = sorted(set(p.current_bet for p in self.players if p.current_bet > 0))
         new_pots = []
         previous_cap = 0
@@ -181,6 +228,7 @@ class PokerGame:
             eligible_players = []
             for p in self.players:
                 if p.current_bet >= bet:
+                    # Вычисляем вклад игрока в этот банк
                     contribution = min(bet, p.current_bet) - previous_cap
                     pot_amount += contribution
                     if not p.folded:
@@ -189,9 +237,15 @@ class PokerGame:
                 new_pots.append({"amount": pot_amount, "eligible_players": eligible_players})
             previous_cap = bet
 
+        # Если не создалось ни одного банка, создаём пустой с активными игроками
         if not new_pots:
             new_pots = [{"amount": 0, "eligible_players": [p.name for p in self.players if not p.folded]}]
+
+        # Обновляем банки
         self.pots = new_pots
+
+        # Логи для отладки
+        print(f"Updated pots: {self.pots}, max_bet: {max_bet}, current_bet: {self.current_bet}")
 
     def get_game_state(self, player_index):
         player = self.players[player_index]
@@ -203,8 +257,15 @@ class PokerGame:
             "current_bet": player.current_bet,
             "pots": [{"amount": pot["amount"], "eligible_players": pot["eligible_players"]} for pot in self.pots],
             "players": [
-                {"name": p.name, "folded": p.folded, "bet": p.current_bet}
-                for p in self.players
+                {
+                    "name": p.name,
+                    "folded": p.folded,
+                    "bet": p.current_bet,
+                    "is_dealer": i == self.dealer_index,  # Убедимся, что поле отправляется
+                    "is_small_blind": i == (self.dealer_index + 1) % len(self.players),
+                    "is_big_blind": i == (self.dealer_index + 2) % len(self.players),
+                }
+                for i, p in enumerate(self.players)
             ],
             "current_player": self.players[self.current_player_index].name,
             "can_advance": self.can_advance_stage()
