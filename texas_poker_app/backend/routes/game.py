@@ -172,17 +172,31 @@ class ConnectionManager:
 
         try:
             if action == "bet":
-                if self.game.place_bet(player_index, value):
-                    await self.check_and_advance_stage()
+                if not self.game.place_bet(player_index, value):
+                    await websocket.send_text(json.dumps({"error": "Invalid bet"}))
+                    return
             elif action == "call_or_pass":
-                if self.game.call_or_pass(player_index):
-                    await self.check_and_advance_stage()
+                if not self.game.call_or_pass(player_index):
+                    await websocket.send_text(json.dumps({"error": "Cannot call or pass"}))
+                    return
             elif action == "fold":
-                if self.game.fold(player_index):
-                    await self.check_and_advance_stage()
+                if not self.game.fold(player_index):
+                    await websocket.send_text(json.dumps({"error": "Cannot fold"}))
+                    return
             elif action == "all_in":
-                if self.game.all_in(player_index):
-                    await self.check_and_advance_stage()
+                if not self.game.all_in(player_index):
+                    await websocket.send_text(json.dumps({"error": "Cannot go all-in"}))
+                    return
+
+            # После каждого действия вызываем check_and_advance_stage, пока стадия меняется
+            previous_stage = self.game.stage
+            while True:
+                await self.check_and_advance_stage()
+                current_stage = self.game.stage
+                if current_stage == previous_stage:
+                    break  # Если стадия не изменилась, выходим из цикла
+                previous_stage = current_stage
+
         except ValueError as e:
             await websocket.send_text(json.dumps({"error": str(e)}))
             await self.broadcast_game_state()
@@ -245,44 +259,41 @@ class ConnectionManager:
         if not self.game:
             return
         game_state = self.game.get_game_state(0)
-        # Игроки, которые могут действовать (не сбросили карты и имеют баланс)
         active_players = [p for p in game_state["players"] if not p["folded"] and self.players[p["name"]].balance > 0]
-        # Игроки, которые всё ещё в игре (включая тех, кто сделал all-in)
         players_in_game = [p for p in game_state["players"] if not p["folded"]]
-
         all_folded = len(players_in_game) <= 1 and any(p["folded"] for p in game_state["players"])
 
-        # Если стадия уже showdown, определяем победителя
+        print(
+            f"Checking stage: {self.game.stage}, active_players: {len(active_players)}, players_in_game: {len(players_in_game)}")
+
         if self.game.stage == "showdown":
             winner = self.game.get_winner()
+            print(f"Winner determined: {winner}")
             await self.broadcast_winner(winner, all_folded)
             return
 
-        # Если остался один игрок в игре (включая all-in), переходим к showdown
         if len(players_in_game) <= 1:
-            # Автоматически переходим к showdown, открывая все карты
             while self.game.stage != "showdown" and self.game.advance_stage():
                 new_game_state = self.game.get_game_state(0)
                 print(f"Automatically advancing to next stage: {new_game_state['stage']}")
             if self.game.stage == "showdown":
                 winner = self.game.get_winner()
+                print(f"Winner determined: {winner}")
                 await self.broadcast_winner(winner, all_folded)
                 return
             await self.broadcast_game_state()
             return
 
-        # Если остался один игрок, который может действовать, и остальные либо сбросили, либо all-in
         if len(active_players) <= 1:
-            # Проверяем, уравняли ли все ставки
             max_bet = max(p["bet"] for p in players_in_game)
             all_bets_settled = all(p["bet"] == max_bet or self.players[p["name"]].balance == 0 for p in players_in_game)
             if all_bets_settled:
-                # Если ставки уравнены, автоматически переходим к следующей стадии
                 while self.game.stage != "showdown" and self.game.advance_stage():
                     new_game_state = self.game.get_game_state(0)
                     print(f"Automatically advancing to next stage: {new_game_state['stage']}")
                 if self.game.stage == "showdown":
                     winner = self.game.get_winner()
+                    print(f"Winner determined: {winner}")
                     await self.broadcast_winner(winner, all_folded)
                     return
                 await self.broadcast_game_state()
@@ -291,16 +302,22 @@ class ConnectionManager:
         if self.game.can_advance_stage():
             if self.game.advance_stage():
                 new_game_state = self.game.get_game_state(0)
+                print(f"Stage advanced to: {new_game_state['stage']}")
                 if new_game_state["stage"] == "showdown":
                     winner = self.game.get_winner()
+                    print(f"Winner determined: {winner}")
                     await self.broadcast_winner(winner, all_folded)
                     return
-                else:
-                    print(f"Automatically advancing to next stage: {new_game_state['stage']}")
                 await self.broadcast_game_state()
             else:
+                print("Cannot advance stage after advance_stage call, broadcasting current state")
                 await self.broadcast_game_state()
         else:
+            if self.game.stage == "showdown":
+                winner = self.game.get_winner()
+                print(f"Winner determined: {winner}")
+                await self.broadcast_winner(winner, all_folded)
+                return
             print("Cannot advance stage, broadcasting current state")
             await self.broadcast_game_state()
 

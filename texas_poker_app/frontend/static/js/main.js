@@ -261,7 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const radius = Math.min(containerWidth, containerHeight) * 0.3;
 
     const centerX = containerWidth / 2;
-    const centerY = containerHeight * 0.441 ;
+    const centerY = containerHeight * 0.441;
 
     const currentPlayerIndex = players.findIndex(p => p.player_id === currentUsername || p.name === currentUsername);
     const totalPlayers = players.length;
@@ -287,12 +287,57 @@ document.addEventListener("DOMContentLoaded", () => {
         playerDiv.className = "player";
         playerDiv.style.left = `${xPercent}%`;
         playerDiv.style.top = `${yPercent}%`;
+        playerDiv.setAttribute("data-position", angleDeg.toString());
 
         const playerId = player.player_id || player.name;
-        const balance = playerBalances[playerId] !== undefined ? playerBalances[playerId] : (player.balance || 0);
+        const balance = player.balance !== undefined ? player.balance : (playerBalances[playerId] || 0);
         console.log(`Displaying balance for ${playerId}: ${balance}`);
         const cardContainer = document.createElement("div");
         cardContainer.className = "card-container";
+
+        // Добавляем элемент для отображения суммы ставок
+        const betLabel = document.createElement("div");
+        betLabel.className = "player-bet";
+        betLabel.setAttribute("data-player-id", playerId); // Для отладки
+        const totalBet = player.total_bet || 0;
+        betLabel.textContent = `Bet: ${totalBet}`;
+        if (totalBet > 0) {
+            betLabel.style.display = "block";
+            betLabel.classList.add("visible");
+
+            // Центр стола в процентах
+            const centerXPercent = (centerX / containerWidth) * 100;
+            const centerYPercent = (centerY / containerHeight) * 100;
+
+            // Расстояние от игрока до центра в процентах
+            const distanceToCenterX = centerXPercent - xPercent;
+            const distanceToCenterY = centerYPercent - yPercent;
+            const distanceToCenter = Math.sqrt(distanceToCenterX ** 2 + distanceToCenterY ** 2);
+
+            // Нормализуем вектор направления к центру
+            const directionX = distanceToCenterX / distanceToCenter;
+            const directionY = distanceToCenterY / distanceToCenter;
+
+            // Смещение к центру в процентах
+            const betOffsetPercent = 8; // Настраиваемое смещение
+            const betXOffsetPercent = directionX * betOffsetPercent;
+            const betYOffsetPercent = directionY * betOffsetPercent;
+
+            // Абсолютная позиция .player-bet относительно #player-circle
+            const betXAbsolutePercent = xPercent + betXOffsetPercent;
+            const betYAbsolutePercent = yPercent + betYOffsetPercent;
+
+            betLabel.style.left = `${betXAbsolutePercent}%`;
+            betLabel.style.top = `${betYAbsolutePercent}%`;
+
+            console.log(`Player ${playerId}: totalBet=${totalBet}, position=(${xPercent}%, ${yPercent}%), bet position=(${betXAbsolutePercent}%, ${betYAbsolutePercent}%)`);
+
+            // Добавляем .player-bet в #player-circle, а не в .player
+            playerCircle.appendChild(betLabel);
+        } else {
+            console.log(`Player ${playerId}: totalBet=${totalBet}, bet label hidden`);
+            betLabel.style.display = "none";
+        }
 
         if (player.is_dealer) {
             console.log(`Displaying Dealer label for ${playerId}`);
@@ -315,12 +360,17 @@ document.addEventListener("DOMContentLoaded", () => {
             playerDiv.appendChild(bbLabel);
         }
 
-        if (winnerName && playerId === winnerName) {
-            console.log(`Adding Winner label for ${playerId}, winnerName: ${winnerName}, playerId type: ${typeof playerId}, winnerName type: ${typeof winnerName}`);
-            const winnerLabel = document.createElement("div");
-            winnerLabel.className = "winner-label";
-            winnerLabel.textContent = "Winner";
-            playerDiv.appendChild(winnerLabel);
+        if (winnerName) {
+            const isWinner = Array.isArray(winnerName)
+                ? winnerName.includes(playerId)
+                : playerId === winnerName;
+            if (isWinner) {
+                console.log(`Adding Winner label for ${playerId}, winnerName: ${JSON.stringify(winnerName)}`);
+                const winnerLabel = document.createElement("div");
+                winnerLabel.className = "winner-label";
+                winnerLabel.textContent = "Winner";
+                playerDiv.appendChild(winnerLabel);
+            }
         }
 
         if (currentPlayer && playerId === currentPlayer && !winnerName) {
@@ -338,10 +388,21 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log(`Showdown: Displaying hand for ${playerId}: ${hand.join(", ")}`);
             updatePlayerHand(hand, true, cardContainer);
         } else {
-            if (winnerName && playerId === winnerName) {
-                const hand = player.hand && player.hand.length > 0 ? player.hand : (playerHands[playerId] || []);
-                console.log(`Displaying winner's hand for ${playerId}: ${hand.join(", ")}`);
-                updatePlayerHand(hand, true, cardContainer);
+            if (winnerName) {
+                const isWinner = Array.isArray(winnerName)
+                    ? winnerName.includes(playerId)
+                    : playerId === winnerName;
+                if (isWinner) {
+                    const hand = player.hand && player.hand.length > 0 ? player.hand : (playerHands[playerId] || []);
+                    console.log(`Displaying winner's hand for ${playerId}: ${hand.join(", ")}`);
+                    updatePlayerHand(hand, true, cardContainer);
+                } else {
+                    for (let i = 0; i < 2; i++) {
+                        const img = document.createElement("img");
+                        img.src = "/static/images/card_back_black.png";
+                        cardContainer.appendChild(img);
+                    }
+                }
             } else {
                 for (let i = 0; i < 2; i++) {
                     const img = document.createElement("img");

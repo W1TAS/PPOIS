@@ -90,16 +90,7 @@ body {
     overflow: hidden; /* Скрыть содержимое, выходящее за пределы */
 }
 
-#player-circle {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    top: -3%;
-    left: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
+
 
 .player {
     position: absolute;
@@ -339,13 +330,28 @@ button:disabled {
     min-width: 3vw;
 }
 
+#player-circle {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
 .player-bet {
     position: absolute;
-    background-color: rgba(0, 0, 0, 0.7); /* Полупрозрачный чёрный фон */
-    color: white; /* Белый текст */
-    padding: 5px 10px; /* Отступы внутри */
-    border-radius: 5px; /* Скруглённые углы */
-    font-size: 14px; /* Размер шрифта */
-    transform: translate(-50%, -50%); /* Центрируем элемент по его середине */
-    pointer-events: none; /* Делаем элемент некликабельным, чтобы он не мешал взаимодействию */
+    background-color: rgba(255, 215, 0, 0.7);
+    color: black;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    display: none;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    white-space: nowrap;
+}
+
+.player-bet.visible {
+    opacity: 1;
 }

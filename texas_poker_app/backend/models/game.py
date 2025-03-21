@@ -35,6 +35,7 @@ class Player:
         self.name = name
         self.hand = []
         self.balance = balance
+        self.total_bet = 0
         self.current_bet = 0
         self.folded = False
 
@@ -47,6 +48,7 @@ class Player:
             raise ValueError("Not enough balance")
         self.balance -= amount
         self.current_bet += amount
+        self.total_bet += amount
 
     def fold(self):
         self.folded = True
@@ -54,6 +56,7 @@ class Player:
 
     def reset_bet(self):
         self.current_bet = 0
+
 
     # Добавляем новые методы из player.py
     def receive_cards(self, cards: list):
@@ -65,6 +68,7 @@ class Player:
         self.hand = []
         self.folded = False
         self.current_bet = 0
+        self.total_bet = 0
 
     def __str__(self):
         """Строковое представление игрока."""
@@ -184,11 +188,9 @@ class PokerGame:
             elif self.stage == "river" or self.stage == "showdown":
                 self.revealed_cards = self.community_cards[:5]
 
-            # На стадиях flop, turn, river первым ходит Small Blind (игрок после дилера)
             if self.stage in ["flop", "turn", "river"]:
                 small_blind_index = (self.dealer_index + 1) % len(self.players)
                 self.current_player_index = self.next_active_player(small_blind_index - 1)
-                # Если нет активных игроков, которые могут действовать, переходим к следующей стадии
                 if self.current_player_index == -1:
                     self.stage = self.STAGES[current_index + 2] if current_index + 2 < len(self.STAGES) else "showdown"
                     if self.stage == "turn":
@@ -196,11 +198,13 @@ class PokerGame:
                     elif self.stage == "river" or self.stage == "showdown":
                         self.revealed_cards = self.community_cards[:5]
                 self.actions_taken = 0
-                self.current_bet = 0  # Сбрасываем текущую ставку
+                self.current_bet = 0
                 for player in self.players:
                     if not player.folded:
-                        player.current_bet = 0  # Сбрасываем ставки игроков
-            return True
+                        player.current_bet = 0
+                return True
+        elif self.stage == "showdown":
+            return True  # Возвращаем True, чтобы routes/game.py вызвал broadcast_winner
         return False
 
     def next_active_player(self, start_index):
@@ -247,7 +251,7 @@ class PokerGame:
             else:
                 player.place_bet(difference)
                 self.update_pots(difference, player)
-        self.current_bet = max(p.current_bet for p in self.players)  # Обновляем текущую ставку
+        self.current_bet = max(p.current_bet for p in self.players)
         self.current_player_index = self.next_active_player(player_index)
         self.actions_taken += 1
         return True
@@ -273,7 +277,7 @@ class PokerGame:
         amount = player.balance
         player.place_bet(amount)
         self.update_pots(amount, player)
-        self.current_bet = max(p.current_bet for p in self.players)  # Обновляем текущую ставку
+        self.current_bet = max(p.current_bet for p in self.players)
         self.current_player_index = self.next_active_player(player_index)
         self.actions_taken += 1
         return True
@@ -340,7 +344,8 @@ class PokerGame:
                     "name": p.name,
                     "folded": p.folded,
                     "bet": p.current_bet,
-                    "is_dealer": i == self.dealer_index,  # Убедимся, что поле отправляется
+                    "total_bet": p.total_bet,  # Убедимся, что это поле есть
+                    "is_dealer": i == self.dealer_index,
                     "is_small_blind": i == (self.dealer_index + 1) % len(self.players),
                     "is_big_blind": i == (self.dealer_index + 2) % len(self.players),
                 }
@@ -412,6 +417,7 @@ class PokerGame:
             winner = players_in_game[0]
             total_winnings = sum(pot["amount"] for pot in self.pots if winner.name in pot["eligible_players"])
             self.players[self.players.index(winner)].balance += total_winnings
+            print(f"Winner (single player): {winner.name}, winnings: {total_winnings}")
             return {"player": winner.name, "hand": [str(card) for card in winner.hand], "winnings": total_winnings}
 
         # Оцениваем руки для showdown
@@ -420,19 +426,20 @@ class PokerGame:
         for player in players_in_game:
             hand = player.hand + self.revealed_cards
             hand_value = self.get_best_hand(player)
+            print(f"Evaluating hand for {player.name}: {hand}, hand_value: {hand_value}")
             if best_hand is None or hand_value > best_hand:
                 best_hand = hand_value
                 winners = [player]
             elif hand_value == best_hand:
                 winners.append(player)
 
-        # Распределяем банк между победителями
         total_winnings = sum(
             pot["amount"] for pot in self.pots if any(w.name in pot["eligible_players"] for w in winners))
         winnings_per_player = total_winnings // len(winners)
         for winner in winners:
             self.players[self.players.index(winner)].balance += winnings_per_player
-
+        print(
+            f"Winners: {[w.name for w in winners]}, total winnings: {total_winnings}, per player: {winnings_per_player}")
         return {
             "player": [w.name for w in winners],
             "hand": [str(card) for card in winners[0].hand] if winners else [],
