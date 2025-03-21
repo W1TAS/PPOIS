@@ -147,9 +147,12 @@ class PokerGame:
         # Обновляем self.current_bet после блайндов
         self.current_bet = max(p.current_bet for p in self.players)
 
-    def can_advance_stage(self):
+    def can_advance_stage(self, balances=None):
+        if self.stage == "showdown":
+            return False
+
         # Игроки, которые могут действовать
-        active_players = [p for p in self.players if not p.folded and p.balance > 0]
+        active_players = [p for p in self.players if not p.folded and (balances[p.name] if balances else p.balance) > 0]
         # Игроки, которые всё ещё в игре (включая all-in)
         players_in_game = [p for p in self.players if not p.folded]
 
@@ -159,7 +162,9 @@ class PokerGame:
         # Находим максимальную ставку среди игроков в игре
         max_bet = max(p.current_bet for p in players_in_game)
         # Проверяем, уравняли ли все игроки максимальную ставку (или у них all-in)
-        bets_settled = all(p.current_bet == max_bet or p.balance == 0 for p in players_in_game)
+        bets_settled = all(
+            p.current_bet == max_bet or (balances[p.name] if balances else p.balance) == 0 for p in players_in_game
+        )
         # Проверяем, сделал ли каждый активный игрок хотя бы одно действие
         round_completed = self.actions_taken >= len(active_players) if active_players else True
 
@@ -190,14 +195,11 @@ class PokerGame:
                         self.revealed_cards = self.community_cards[:4]
                     elif self.stage == "river" or self.stage == "showdown":
                         self.revealed_cards = self.community_cards[:5]
-            else:
-                self.current_player_index = self.next_active_player(-1)
-
-            self.actions_taken = 0
-            self.current_bet = 0  # Сбрасываем текущую ставку
-            for player in self.players:
-                if not player.folded:
-                    player.current_bet = 0  # Сбрасываем ставки игроков
+                self.actions_taken = 0
+                self.current_bet = 0  # Сбрасываем текущую ставку
+                for player in self.players:
+                    if not player.folded:
+                        player.current_bet = 0  # Сбрасываем ставки игроков
             return True
         return False
 

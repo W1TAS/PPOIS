@@ -252,6 +252,12 @@ class ConnectionManager:
 
         all_folded = len(players_in_game) <= 1 and any(p["folded"] for p in game_state["players"])
 
+        # Если стадия уже showdown, определяем победителя
+        if self.game.stage == "showdown":
+            winner = self.game.get_winner()
+            await self.broadcast_winner(winner, all_folded)
+            return
+
         # Если остался один игрок в игре (включая all-in), переходим к showdown
         if len(players_in_game) <= 1:
             # Автоматически переходим к showdown, открывая все карты
@@ -291,7 +297,9 @@ class ConnectionManager:
                     return
                 else:
                     print(f"Automatically advancing to next stage: {new_game_state['stage']}")
-            await self.broadcast_game_state()
+                await self.broadcast_game_state()
+            else:
+                await self.broadcast_game_state()
         else:
             print("Cannot advance stage, broadcasting current state")
             await self.broadcast_game_state()
