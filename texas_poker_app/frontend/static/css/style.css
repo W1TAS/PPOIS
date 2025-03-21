@@ -333,3 +333,14 @@ button:disabled {
     font-size: 0.9vw;
     z-index: 5;
 }
+
+.player-bet {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.7); /* Полупрозрачный чёрный фон */
+    color: white; /* Белый текст */
+    padding: 5px 10px; /* Отступы внутри */
+    border-radius: 5px; /* Скруглённые углы */
+    font-size: 14px; /* Размер шрифта */
+    transform: translate(-50%, -50%); /* Центрируем элемент по его середине */
+    pointer-events: none; /* Делаем элемент некликабельным, чтобы он не мешал взаимодействию */
+}

@@ -213,8 +213,6 @@ class ConnectionManager:
 
     # routes/game.py (фрагмент)
 
-    # routes/game.py (фрагмент)
-
     async def broadcast_game_state(self):
         if not self.game:
             return
@@ -228,6 +226,7 @@ class ConnectionManager:
                 if self.game.stage == "showdown":
                     player["ready"] = self.active_connections[list(self.active_connections.keys())[player_index]][
                         "ready"]
+            print(f"Sending game state to {data['player_id']} (index {player_index}): {game_state}")
             try:
                 await websocket.send_text(json.dumps(game_state))
             except Exception as e:

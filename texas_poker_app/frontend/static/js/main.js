@@ -127,9 +127,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     updatePlayerHand(data.hand, username === data.current_player);
                     updateCommunityCards(data.community_cards, data.stage);
                     if (data.pots) {
+                        console.log("Pots received:", data.pots);
                         const total_pot = data.pots.reduce((sum, pot) => sum + pot.amount, 0);
-                        document.getElementById("pot").textContent = `Pot: ${total_pot} (${data.pots.map(p => p.amount).join(" | ")})`;
+                        const potText = `Pot: ${total_pot} (${data.pots.map(p => p.amount).join(" | ")})`;
+                        document.getElementById("pot").textContent = potText;
+                        console.log("Pot displayed:", potText); // Добавляем лог
                     } else {
+                        console.log("No pots received in game state");
                         document.getElementById("pot").textContent = "Pot: 0";
                     }
                 }

@@ -50,9 +50,26 @@ class Player:
 
     def fold(self):
         self.folded = True
+        self.hand = []  # Очищаем руку при сбросе карт
 
     def reset_bet(self):
         self.current_bet = 0
+
+    # Добавляем новые методы из player.py
+    def receive_cards(self, cards: list):
+        """Получение списка карт в руку."""
+        self.hand.extend(cards)
+
+    def reset(self):
+        """Сброс состояния игрока для новой раздачи."""
+        self.hand = []
+        self.folded = False
+        self.current_bet = 0
+
+    def __str__(self):
+        """Строковое представление игрока."""
+        hand_str = ", ".join(str(card) for card in self.hand) if self.hand else "No cards"
+        return f"{self.name}: {hand_str}, Balance: {self.balance}"
 
 class PokerGame:
     STAGES = ["preflop", "flop", "turn", "river", "showdown"]
@@ -71,8 +88,6 @@ class PokerGame:
         self.small_blind = 10   # Размер Small Blind
         self.big_blind = 20     # Размер Big Blind
 
-    # models/game.py (фрагмент)
-
     def start_new_round(self):
         self.deck = Deck()
         self.deck.shuffle()
@@ -85,7 +100,7 @@ class PokerGame:
 
         # Сбрасываем ставки игроков
         for player in self.players:
-            player.current_bet = 0
+            player.reset()  # Используем новый метод reset вместо отдельных сбросов
 
         # Перемещаем дилера
         self.dealer_index = (self.dealer_index + 1) % len(self.players) if self.dealer_index >= 0 else 0
@@ -110,8 +125,8 @@ class PokerGame:
 
         # Раздаём карты
         for player in self.players:
-            player.hand = [self.deck.deal_card(), self.deck.deal_card()]
-            player.folded = False
+            cards = [self.deck.deal_card(), self.deck.deal_card()]
+            player.receive_cards(cards)  # Используем receive_cards вместо отдельных receive_card
 
         # Обновляем self.current_bet после блайндов
         self.current_bet = max(p.current_bet for p in self.players)
@@ -171,12 +186,12 @@ class PokerGame:
         player = self.players[player_index]
         if player.folded or player_index != self.current_player_index:
             return False
+        # Корректируем amount до проверки total_bet
+        if amount > player.balance:
+            amount = player.balance
         total_bet = player.current_bet + amount
         if total_bet < self.current_bet:
             raise ValueError("Bet must match or exceed current bet")
-        if amount > player.balance:
-            amount = player.balance
-            total_bet = player.current_bet + amount
         player.place_bet(amount)
         self.update_pots(amount, player)
         self.current_bet = max(p.current_bet for p in self.players)  # Обновляем текущую ставку
@@ -224,43 +239,51 @@ class PokerGame:
         return True
 
     def update_pots(self, amount, player):
+        print(f"Updating pots for player {player.name}, amount={amount}, current_bet={player.current_bet}")
         # Убедимся, что у нас есть хотя бы один банк
         if not self.pots:
+            print("No pots exist, creating a new one")
             self.pots = [{"amount": 0, "eligible_players": [p.name for p in self.players if not p.folded]}]
 
-        # Находим текущую максимальную ставку среди всех игроков
-        max_bet = max(p.current_bet for p in self.players)
+        # Вычисляем, сколько нужно добавить
+        additional_bet = amount
+        if additional_bet <= 0:
+            print(f"No additional bet needed for player {player.name}, returning")
+            return
 
-        # Обновляем self.current_bet, чтобы он отражал максимальную ставку
-        self.current_bet = max_bet
+        # Удаляем проверку баланса, так как она уже выполнена в place_bet
+        # print(f"Checking balance: additional_bet={additional_bet}, player.balance={player.balance}")
+        # if additional_bet > player.balance:
+        #     print(f"Player {player.name} does not have enough chips to bet {additional_bet}")
+        #     raise ValueError(f"Player {player.name} does not have enough chips to bet {additional_bet}")
 
-        # Создаём новые банки на основе текущих ставок
-        bets = sorted(set(p.current_bet for p in self.players if p.current_bet > 0))
-        new_pots = []
-        previous_cap = 0
+        # Находим текущую максимальную ставку среди всех игроков (для отладки)
+        print("Calculating max_bet")
+        try:
+            max_bet = max(p.current_bet for p in self.players)
+        except Exception as e:
+            print(f"Error calculating max_bet: {e}")
+            raise
+        print(f"max_bet={max_bet}")
 
-        for bet in bets:
-            pot_amount = 0
-            eligible_players = []
-            for p in self.players:
-                if p.current_bet >= bet:
-                    # Вычисляем вклад игрока в этот банк
-                    contribution = min(bet, p.current_bet) - previous_cap
-                    pot_amount += contribution
-                    if not p.folded:
-                        eligible_players.append(p.name)
-            if pot_amount > 0 and eligible_players:
-                new_pots.append({"amount": pot_amount, "eligible_players": eligible_players})
-            previous_cap = bet
+        # Определяем активных игроков
+        print("Determining active players")
+        active_players = [p.name for p in self.players if not p.folded]
+        print(f"Active players: {active_players}")
+        if not active_players:
+            print("No active players, returning")
+            return
 
-        # Если не создалось ни одного банка, создаём пустой с активными игроками
-        if not new_pots:
-            new_pots = [{"amount": 0, "eligible_players": [p.name for p in self.players if not p.folded]}]
+        # Проверяем, нужно ли создавать новый банк
+        print(f"Current pots: {self.pots}")
+        if not self.pots or self.pots[-1]["eligible_players"] != active_players:
+            print("Creating new pot due to change in eligible players")
+            self.pots.append({"amount": 0, "eligible_players": active_players})
 
-        # Обновляем банки
-        self.pots = new_pots
+        # Добавляем ставку к последнему банку
+        print(f"Adding {additional_bet} to last pot")
+        self.pots[-1]["amount"] += additional_bet
 
-        # Логи для отладки
         print(f"Updated pots: {self.pots}, max_bet: {max_bet}, current_bet: {self.current_bet}")
 
     def get_game_state(self, player_index):
