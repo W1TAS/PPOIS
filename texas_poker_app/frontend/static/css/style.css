@@ -84,13 +84,11 @@ body {
     align-items: center;
     background-color: transparent;
     background-image: url("../images/table_cropped.png");
-    background-size: cover; /* Масштабировать изображение, чтобы оно покрывало весь контейнер */
-    background-position: center; /* Центрировать изображение */
-    background-repeat: no-repeat; /* Не повторять изображение */
-    overflow: hidden; /* Скрыть содержимое, выходящее за пределы */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    overflow: hidden;
 }
-
-
 
 .player {
     position: absolute;
@@ -116,7 +114,6 @@ body {
     color: white;
 }
 
-
 .winner-label {
     position: absolute;
     top: -6vh;
@@ -132,10 +129,10 @@ body {
 
 .current-label {
     position: absolute;
-    top: -6vh; /* Располагаем надпись над блоком игрока */
+    top: -6vh;
     left: 50%;
     transform: translateX(-50%);
-    background-color: #ffc107; /* Жёлтый фон для текущего игрока */
+    background-color: #ffc107;
     color: #333;
     padding: 0.5vh 1vw;
     border-radius: 0.4vw;
@@ -303,33 +300,6 @@ button:disabled {
     border-radius: 0.2vw;
 }
 
-.dealer-label {
-    position: absolute;
-    top: -2vh;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #007bff; /* Синий фон для дилера */
-    color: white;
-    padding: 0.5vh 1vw;
-    border-radius: 0.4vw;
-    font-size: 0.9vw;
-    z-index: 5;
-}
-
-.blind-label {
-    position: absolute;
-    top: -2vh;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #6c757d; /* Серый фон для блайндов */
-    color: white;
-    padding: 0.5vh 1vw;
-    border-radius: 0.4vw;
-    font-size: 0.9vw;
-    z-index: 5;
-    min-width: 3vw;
-}
-
 #player-circle {
     position: relative;
     width: 100%;
@@ -338,7 +308,7 @@ button:disabled {
 
 .player-bet {
     position: absolute;
-    background-color: rgba(255, 215, 0, 0.7);
+    background-color: rgba(255, 215, 0, 0.7); /* Цвет по умолчанию */
     color: black;
     padding: 5px 10px;
     border-radius: 5px;
@@ -354,4 +324,33 @@ button:disabled {
 
 .player-bet.visible {
     opacity: 1;
+}
+
+/* Цвета для разных диапазонов ставок */
+.player-bet.bet-low {
+    background-color: rgba(102, 255, 69, 0.7); /* Зелёный для низкой ставки (0–50) */
+}
+
+.player-bet.bet-medium {
+    background-color: rgba(255, 193, 7, 0.7); /* Жёлтый для средней ставки (51–200) */
+}
+
+.player-bet.bet-high {
+    background-color: rgba(220, 53, 69, 0.7); /* Красный для высокой ставки (201+) */
+}
+
+.role-label {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #ccc;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translate(-50%, -50%);
+    z-index: 10; /* Устанавливаем z-index, чтобы метка была поверх игрока */
 }

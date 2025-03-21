@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let playerBalances = {};
     let playerHands = {};
     let currentWinner = null;
-    let gameEnded = false; // Добавляем флаг для отслеживания окончания игры
+    let gameEnded = false;
     let currentPlayer = null;
 
     function showGame() {
@@ -81,8 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (data.error) {
                 console.log("Error received:", data.error);
-                alert(data.error); // Показываем ошибку пользователю
-                // Сбрасываем состояние игры
+                alert(data.error);
                 document.getElementById("table-center").style.display = "none";
                 document.getElementById("player-info").style.display = "none";
                 document.getElementById("stage").textContent = "";
@@ -90,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 gameEnded = false;
                 return;
             }
-            // Обновляем баланс в состоянии "Pre-game"
+
             if (data.players && !data.stage && !data.winner && !data.all_ready) {
                 console.log("Pre-game state without winner, stage, or all ready");
                 gameEnded = false;
@@ -106,7 +105,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("player-info").style.display = "none";
             }
 
-            // Обновляем баланс в состоянии "All ready"
             if (data.all_ready) {
                 console.log("All players ready, resetting game state");
                 gameEnded = false;
@@ -118,6 +116,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("action-bar").style.display = "none";
                 document.getElementById("ready-button").style.display = "block";
                 toggleButtons(false);
+                // Очищаем старые метки ставок
+                const playerCircle = document.getElementById("player-circle");
+                const oldBetLabels = playerCircle.querySelectorAll(".player-bet");
+                oldBetLabels.forEach(label => label.remove());
                 if (data.players) {
                     data.players.forEach(player => {
                         playerBalances[player.player_id] = player.balance !== undefined ? player.balance : (playerBalances[player.player_id] || 0);
@@ -127,7 +129,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            // Обновляем баланс в состоянии игры
             if (data.stage) {
                 updatePlayerList(data.players, username, data.stage === "showdown" ? currentWinner : null, data.stage);
                 console.log("Game state");
@@ -143,20 +144,18 @@ document.addEventListener("DOMContentLoaded", () => {
                         const total_pot = data.pots.reduce((sum, pot) => sum + pot.amount, 0);
                         const potText = `Pot: ${total_pot} (${data.pots.map(p => p.amount).join(" | ")})`;
                         document.getElementById("pot").textContent = potText;
-                        console.log("Pot displayed:", potText); // Добавляем лог
+                        console.log("Pot displayed:", potText);
                     } else {
                         console.log("No pots received in game state");
                         document.getElementById("pot").textContent = "Pot: 0";
                     }
                 }
 
-                // Обновляем баланс текущего игрока из data.balance
                 if (data.balance !== undefined) {
                     playerBalances[username] = data.balance;
                     console.log(`Updated playerBalances[${username}] = ${playerBalances[username]} from data.balance`);
                 }
 
-                // Обновляем баланс для всех игроков из data.players
                 if (data.players) {
                     data.players.forEach(player => {
                         playerBalances[player.name] = player.balance !== undefined ? player.balance : (playerBalances[player.name] || 0);
@@ -167,10 +166,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     });
                 }
 
-                // Обновляем отображение баланса текущего игрока
                 document.getElementById("balance").innerHTML = `${username} <span>${playerBalances[username]}</span>`;
                 currentPlayer = data.current_player;
-                updatePlayerList(data.players, username, data.stage === "showdown" ? currentWinner : null);
+                updatePlayerList(data.players, username, data.stage === "showdown" ? currentWinner : null, data.stage);
                 document.getElementById("ready-button").style.display = "none";
                 const isActivePlayer = data.current_player === username && !data.players.find(p => p.name === username)?.folded;
                 console.log(`Current player: ${data.current_player}, isActivePlayer: ${isActivePlayer}, gameEnded: ${gameEnded}, stage: ${data.stage}`);
@@ -240,162 +238,171 @@ document.addEventListener("DOMContentLoaded", () => {
         return `${suitMap[suit]}_${value.toLowerCase()}`;
     }
 
-    // main.js (фрагмент функции updatePlayerList)
-
     function updatePlayerList(players, currentUsername, winnerName = null, stage = null) {
-    const gameContainer = document.getElementById("game-container");
-    if (!gameContainer) {
-        console.error("Element #game-container not found in DOM");
-        return;
-    }
-    const playerCircle = document.getElementById("player-circle");
-    if (!playerCircle) {
-        console.error("Element #player-circle not found in DOM");
-        return;
-    }
-    playerCircle.innerHTML = "";
-
-    const containerWidth = gameContainer.offsetWidth;
-    const containerHeight = gameContainer.offsetHeight;
-    const aspectRatio = containerWidth / containerHeight;
-    const radius = Math.min(containerWidth, containerHeight) * 0.3;
-
-    const centerX = containerWidth / 2;
-    const centerY = containerHeight * 0.441;
-
-    const currentPlayerIndex = players.findIndex(p => p.player_id === currentUsername || p.name === currentUsername);
-    const totalPlayers = players.length;
-
-    const reorderedPlayers = [];
-    for (let i = 0; i < totalPlayers; i++) {
-        const index = (currentPlayerIndex + i) % totalPlayers;
-        reorderedPlayers.push(players[index]);
-    }
-
-    reorderedPlayers.forEach((player, index) => {
-        console.log(`Player ${player.name || player.player_id}: is_dealer=${player.is_dealer}, is_small_blind=${player.is_small_blind}, is_big_blind=${player.is_big_blind}, ready=${player.ready}, balance=${player.balance}`);
-
-        const angleDeg = 90 + (360 / totalPlayers) * index;
-        const angleRad = (angleDeg * Math.PI) / 180;
-        const xOffset = radius * Math.cos(angleRad) * aspectRatio;
-        const yOffset = radius * Math.sin(angleRad);
-
-        const xPercent = ((centerX + xOffset) / containerWidth) * 100;
-        const yPercent = ((centerY + yOffset) / containerHeight) * 100;
-
-        const playerDiv = document.createElement("div");
-        playerDiv.className = "player";
-        playerDiv.style.left = `${xPercent}%`;
-        playerDiv.style.top = `${yPercent}%`;
-        playerDiv.setAttribute("data-position", angleDeg.toString());
-
-        const playerId = player.player_id || player.name;
-        const balance = player.balance !== undefined ? player.balance : (playerBalances[playerId] || 0);
-        console.log(`Displaying balance for ${playerId}: ${balance}`);
-        const cardContainer = document.createElement("div");
-        cardContainer.className = "card-container";
-
-        // Добавляем элемент для отображения суммы ставок
-        const betLabel = document.createElement("div");
-        betLabel.className = "player-bet";
-        betLabel.setAttribute("data-player-id", playerId); // Для отладки
-        const totalBet = player.total_bet || 0;
-        betLabel.textContent = `Bet: ${totalBet}`;
-        if (totalBet > 0) {
-            betLabel.style.display = "block";
-            betLabel.classList.add("visible");
-
-            // Центр стола в процентах
-            const centerXPercent = (centerX / containerWidth) * 100;
-            const centerYPercent = (centerY / containerHeight) * 100;
-
-            // Расстояние от игрока до центра в процентах
-            const distanceToCenterX = centerXPercent - xPercent;
-            const distanceToCenterY = centerYPercent - yPercent;
-            const distanceToCenter = Math.sqrt(distanceToCenterX ** 2 + distanceToCenterY ** 2);
-
-            // Нормализуем вектор направления к центру
-            const directionX = distanceToCenterX / distanceToCenter;
-            const directionY = distanceToCenterY / distanceToCenter;
-
-            // Смещение к центру в процентах
-            const betOffsetPercent = 8; // Настраиваемое смещение
-            const betXOffsetPercent = directionX * betOffsetPercent;
-            const betYOffsetPercent = directionY * betOffsetPercent;
-
-            // Абсолютная позиция .player-bet относительно #player-circle
-            const betXAbsolutePercent = xPercent + betXOffsetPercent;
-            const betYAbsolutePercent = yPercent + betYOffsetPercent;
-
-            betLabel.style.left = `${betXAbsolutePercent}%`;
-            betLabel.style.top = `${betYAbsolutePercent}%`;
-
-            console.log(`Player ${playerId}: totalBet=${totalBet}, position=(${xPercent}%, ${yPercent}%), bet position=(${betXAbsolutePercent}%, ${betYAbsolutePercent}%)`);
-
-            // Добавляем .player-bet в #player-circle, а не в .player
-            playerCircle.appendChild(betLabel);
-        } else {
-            console.log(`Player ${playerId}: totalBet=${totalBet}, bet label hidden`);
-            betLabel.style.display = "none";
+        const gameContainer = document.getElementById("game-container");
+        if (!gameContainer) {
+            console.error("Element #game-container not found in DOM");
+            return;
+        }
+        const playerCircle = document.getElementById("player-circle");
+        if (!playerCircle) {
+            console.error("Element #player-circle not found in DOM");
+            return;
+        }
+        // Очищаем содержимое playerCircle, включая старые метки ставок
+        while (playerCircle.firstChild) {
+            playerCircle.removeChild(playerCircle.firstChild);
         }
 
-        if (player.is_dealer) {
-            console.log(`Displaying Dealer label for ${playerId}`);
-            const dealerLabel = document.createElement("div");
-            dealerLabel.className = "dealer-label";
-            dealerLabel.textContent = "Dealer";
-            playerDiv.appendChild(dealerLabel);
+        const containerWidth = gameContainer.offsetWidth;
+        const containerHeight = gameContainer.offsetHeight;
+        const aspectRatio = containerWidth / containerHeight;
+        const radius = Math.min(containerWidth, containerHeight) * 0.3;
+
+        const centerX = containerWidth / 2;
+        const centerY = containerHeight * 0.42;
+
+        const currentPlayerIndex = players.findIndex(p => p.player_id === currentUsername || p.name === currentUsername);
+        const totalPlayers = players.length;
+
+        const reorderedPlayers = [];
+        for (let i = 0; i < totalPlayers; i++) {
+            const index = (currentPlayerIndex + i) % totalPlayers;
+            reorderedPlayers.push(players[index]);
         }
 
-        if (player.is_small_blind) {
-            const sbLabel = document.createElement("div");
-            sbLabel.className = "blind-label";
-            sbLabel.textContent = "SB: 10";
-            playerDiv.appendChild(sbLabel);
-        }
-        if (player.is_big_blind) {
-            const bbLabel = document.createElement("div");
-            bbLabel.className = "blind-label";
-            bbLabel.textContent = "BB: 20";
-            playerDiv.appendChild(bbLabel);
-        }
+        reorderedPlayers.forEach((player, index) => {
+            console.log(`Player ${player.name || player.player_id}: is_dealer=${player.is_dealer}, is_small_blind=${player.is_small_blind}, is_big_blind=${player.is_big_blind}, ready=${player.ready}, balance=${player.balance}`);
 
-        if (winnerName) {
-            const isWinner = Array.isArray(winnerName)
-                ? winnerName.includes(playerId)
-                : playerId === winnerName;
-            if (isWinner) {
-                console.log(`Adding Winner label for ${playerId}, winnerName: ${JSON.stringify(winnerName)}`);
-                const winnerLabel = document.createElement("div");
-                winnerLabel.className = "winner-label";
-                winnerLabel.textContent = "Winner";
-                playerDiv.appendChild(winnerLabel);
+            const angleDeg = 90 + (360 / totalPlayers) * index;
+            const angleRad = (angleDeg * Math.PI) / 180;
+            const xOffset = radius * Math.cos(angleRad) * aspectRatio;
+            const yOffset = radius * Math.sin(angleRad);
+
+            const xPercent = ((centerX + xOffset) / containerWidth) * 100;
+            const yPercent = ((centerY + yOffset) / containerHeight) * 100;
+
+            const playerDiv = document.createElement("div");
+            playerDiv.className = "player";
+            playerDiv.style.left = `${xPercent}%`;
+            playerDiv.style.top = `${yPercent}%`;
+            playerDiv.setAttribute("data-position", angleDeg.toString());
+
+            const playerId = player.player_id || player.name;
+            const balance = player.balance !== undefined ? player.balance : (playerBalances[playerId] || 0);
+            console.log(`Displaying balance for ${playerId}: ${balance}`);
+            const cardContainer = document.createElement("div");
+            cardContainer.className = "card-container";
+
+            // Добавляем элемент для отображения суммы ставок (только число)
+            const betLabel = document.createElement("div");
+            betLabel.className = "player-bet";
+            betLabel.setAttribute("data-player-id", playerId);
+            const totalBet = player.total_bet || 0;
+            betLabel.textContent = totalBet; // Только число
+            if (totalBet > 0) {
+                betLabel.style.display = "block";
+                betLabel.classList.add("visible");
+
+                // Определяем цвет в зависимости от количества фишек
+                if (totalBet <= 50) {
+                    betLabel.classList.add("bet-low"); // Зелёный для низкой ставки
+                } else if (totalBet <= 200) {
+                    betLabel.classList.add("bet-medium"); // Жёлтый для средней ставки
+                } else {
+                    betLabel.classList.add("bet-high"); // Красный для высокой ставки
+                }
+
+                const centerXPercent = (centerX / containerWidth) * 100;
+                const centerYPercent = (centerY / containerHeight) * 100;
+
+                const distanceToCenterX = centerXPercent - xPercent;
+                const distanceToCenterY = centerYPercent - yPercent;
+                const distanceToCenter = Math.sqrt(distanceToCenterX ** 2 + distanceToCenterY ** 2);
+
+                const directionX = distanceToCenterX / distanceToCenter;
+                const directionY = distanceToCenterY / distanceToCenter;
+
+                const betOffsetPercent = 8;
+                const betXOffsetPercent = directionX * betOffsetPercent;
+                const betYOffsetPercent = directionY * betOffsetPercent;
+
+                const betXAbsolutePercent = xPercent + betXOffsetPercent;
+                const betYAbsolutePercent = yPercent + betYOffsetPercent;
+
+                betLabel.style.left = `${betXAbsolutePercent}%`;
+                betLabel.style.top = `${betYAbsolutePercent}%`;
+
+                console.log(`Player ${playerId}: totalBet=${totalBet}, position=(${xPercent}%, ${yPercent}%), bet position=(${betXAbsolutePercent}%, ${betYAbsolutePercent}%)`);
+
+                playerCircle.appendChild(betLabel);
+            } else {
+                console.log(`Player ${playerId}: totalBet=${totalBet}, bet label hidden`);
+                betLabel.style.display = "none";
             }
-        }
 
-        if (currentPlayer && playerId === currentPlayer && !winnerName) {
-            const currentLabel = document.createElement("div");
-            currentLabel.className = "current-label";
-            currentLabel.textContent = "Current";
-            playerDiv.appendChild(currentLabel);
-        }
+            const roleLabel = document.createElement("div");
+            roleLabel.className = "role-label";
+            roleLabel.style.left = `calc(${xPercent}% + 3vw)`; // Сдвигаем вправо от имени игрока
+            roleLabel.style.top = `${yPercent}%`;
+            roleLabel.style.zIndex = "10"; // Устанавливаем z-index, чтобы метка была поверх игрока
+            if (player.is_dealer) {
+                roleLabel.textContent = "D";
+                roleLabel.style.backgroundColor = "#FFD700"; // Золотой для дилера
+            } else if (player.is_small_blind) {
+                roleLabel.textContent = "SB";
+                roleLabel.style.backgroundColor = "#87CEEB"; // Голубой для малого блайнда
+            } else if (player.is_big_blind) {
+                roleLabel.textContent = "BB";
+                roleLabel.style.backgroundColor = "#FF6347"; // Красный для большого блайнда
+            } else {
+                roleLabel.style.display = "none"; // Скрываем, если нет роли
+            }
+            playerCircle.appendChild(roleLabel);
 
-        if (player.name === currentUsername) {
-            const hand = playerHands[player.name] || [];
-            updatePlayerHand(hand, true, cardContainer);
-        } else if (stage === "showdown") {
-            const hand = player.hand && player.hand.length > 0 ? player.hand : (playerHands[playerId] || []);
-            console.log(`Showdown: Displaying hand for ${playerId}: ${hand.join(", ")}`);
-            updatePlayerHand(hand, true, cardContainer);
-        } else {
             if (winnerName) {
                 const isWinner = Array.isArray(winnerName)
                     ? winnerName.includes(playerId)
                     : playerId === winnerName;
                 if (isWinner) {
-                    const hand = player.hand && player.hand.length > 0 ? player.hand : (playerHands[playerId] || []);
-                    console.log(`Displaying winner's hand for ${playerId}: ${hand.join(", ")}`);
-                    updatePlayerHand(hand, true, cardContainer);
+                    console.log(`Adding Winner label for ${playerId}, winnerName: ${JSON.stringify(winnerName)}`);
+                    const winnerLabel = document.createElement("div");
+                    winnerLabel.className = "winner-label";
+                    winnerLabel.textContent = "Winner";
+                    playerDiv.appendChild(winnerLabel);
+                }
+            }
+
+            if (currentPlayer && playerId === currentPlayer && !winnerName && playerId !== currentUsername) {
+                const currentLabel = document.createElement("div");
+                currentLabel.className = "current-label";
+                currentLabel.textContent = "Current";
+                playerDiv.appendChild(currentLabel);
+            }
+
+            if (player.name === currentUsername) {
+                const hand = playerHands[player.name] || [];
+                updatePlayerHand(hand, true, cardContainer);
+            } else if (stage === "showdown") {
+                const hand = player.hand && player.hand.length > 0 ? player.hand : (playerHands[playerId] || []);
+                console.log(`Showdown: Displaying hand for ${playerId}: ${hand.join(", ")}`);
+                updatePlayerHand(hand, true, cardContainer);
+            } else {
+                if (winnerName) {
+                    const isWinner = Array.isArray(winnerName)
+                        ? winnerName.includes(playerId)
+                        : playerId === winnerName;
+                    if (isWinner) {
+                        const hand = player.hand && player.hand.length > 0 ? player.hand : (playerHands[playerId] || []);
+                        console.log(`Displaying winner's hand for ${playerId}: ${hand.join(", ")}`);
+                        updatePlayerHand(hand, true, cardContainer);
+                    } else {
+                        for (let i = 0; i < 2; i++) {
+                            const img = document.createElement("img");
+                            img.src = "/static/images/card_back_black.png";
+                            cardContainer.appendChild(img);
+                        }
+                    }
                 } else {
                     for (let i = 0; i < 2; i++) {
                         const img = document.createElement("img");
@@ -403,24 +410,17 @@ document.addEventListener("DOMContentLoaded", () => {
                         cardContainer.appendChild(img);
                     }
                 }
-            } else {
-                for (let i = 0; i < 2; i++) {
-                    const img = document.createElement("img");
-                    img.src = "/static/images/card_back_black.png";
-                    cardContainer.appendChild(img);
-                }
             }
-        }
 
-        if (player.ready !== undefined) {
-            playerDiv.innerHTML += `${playerId}<br>${player.ready ? "Ready" : "Not Ready"}<br><span class="balance">${balance}</span>`;
-        } else {
-            playerDiv.innerHTML += `${playerId}<br><span class="balance">${balance}</span>`;
-        }
-        playerDiv.appendChild(cardContainer);
-        playerCircle.appendChild(playerDiv);
-    });
-}
+            if (player.ready !== undefined) {
+                playerDiv.innerHTML += `${playerId}<br>${player.ready ? "Ready" : "Not Ready"}<br><span class="balance">${balance}</span>`;
+            } else {
+                playerDiv.innerHTML += `${playerId}<br><span class="balance">${balance}</span>`;
+            }
+            playerDiv.appendChild(cardContainer);
+            playerCircle.appendChild(playerDiv);
+        });
+    }
 
     function updatePlayerHand(hand, isCurrentPlayer, container = document.getElementById("player-hand")) {
         container.innerHTML = "";
