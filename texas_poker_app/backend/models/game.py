@@ -148,18 +148,23 @@ class PokerGame:
         self.current_bet = max(p.current_bet for p in self.players)
 
     def can_advance_stage(self):
-        active_players = [p for p in self.players if not p.folded]
-        if len(active_players) <= 1:
+        # Игроки, которые могут действовать
+        active_players = [p for p in self.players if not p.folded and p.balance > 0]
+        # Игроки, которые всё ещё в игре (включая all-in)
+        players_in_game = [p for p in self.players if not p.folded]
+
+        if len(players_in_game) <= 1:
             return True
-        # Находим максимальную ставку среди активных игроков
-        max_bet = max(p.current_bet for p in active_players)
-        # Проверяем, уравняли ли все активные игроки максимальную ставку
-        bets_settled = all(p.current_bet == max_bet or p.balance == 0 for p in active_players)
-        round_completed = self.actions_taken >= len(active_players)
+
+        # Находим максимальную ставку среди игроков в игре
+        max_bet = max(p.current_bet for p in players_in_game)
+        # Проверяем, уравняли ли все игроки максимальную ставку (или у них all-in)
+        bets_settled = all(p.current_bet == max_bet or p.balance == 0 for p in players_in_game)
+        # Проверяем, сделал ли каждый активный игрок хотя бы одно действие
+        round_completed = self.actions_taken >= len(active_players) if active_players else True
+
         print(f"can_advance_stage: bets_settled={bets_settled}, round_completed={round_completed}, max_bet={max_bet}")
         return bets_settled and round_completed
-
-    # models/game.py (фрагмент)
 
     def advance_stage(self):
         if not self.can_advance_stage():
@@ -178,6 +183,13 @@ class PokerGame:
             if self.stage in ["flop", "turn", "river"]:
                 small_blind_index = (self.dealer_index + 1) % len(self.players)
                 self.current_player_index = self.next_active_player(small_blind_index - 1)
+                # Если нет активных игроков, которые могут действовать, переходим к следующей стадии
+                if self.current_player_index == -1:
+                    self.stage = self.STAGES[current_index + 2] if current_index + 2 < len(self.STAGES) else "showdown"
+                    if self.stage == "turn":
+                        self.revealed_cards = self.community_cards[:4]
+                    elif self.stage == "river" or self.stage == "showdown":
+                        self.revealed_cards = self.community_cards[:5]
             else:
                 self.current_player_index = self.next_active_player(-1)
 
@@ -190,12 +202,16 @@ class PokerGame:
         return False
 
     def next_active_player(self, start_index):
-        active_players = [i for i, p in enumerate(self.players) if not p.folded]
+        active_players = [i for i, p in enumerate(self.players) if not p.folded and p.balance > 0]
         if not active_players:
-            return 0
+            return -1  # Возвращаем -1, если нет активных игроков
         next_index = (start_index + 1) % len(self.players)
+        # Проверяем, чтобы не зациклиться
+        start = next_index
         while next_index not in active_players:
             next_index = (next_index + 1) % len(self.players)
+            if next_index == start:  # Если сделали полный круг
+                return -1
         return next_index
 
     def place_bet(self, player_index, amount):
