@@ -251,11 +251,17 @@ class PokerGame:
         return True
 
     def fold(self, player_index):
-        if player_index != self.current_player_index:
+        if self.players[player_index].folded:
             return False
-        self.players[player_index].fold()
-        self.current_player_index = self.next_active_player(player_index)
+        self.players[player_index].folded = True
         self.actions_taken += 1
+
+        # Обновляем eligible_players в банках
+        for pot in self.pots:
+            if self.players[player_index].name in pot["eligible_players"]:
+                pot["eligible_players"].remove(self.players[player_index].name)
+
+        self.current_player_index = self.next_active_player(self.current_player_index)
         return True
 
     def all_in(self, player_index):
@@ -399,30 +405,34 @@ class PokerGame:
         return None
 
     def get_winner(self):
-        active_players = [p for p in self.players if not p.folded]
-        if not active_players:
-            return None
-        # Определяем победителя по лучшей комбинации
-        winner = max(active_players, key=lambda p: self.get_best_hand(p)) if len(active_players) > 1 else \
-        active_players[0]
-        # Распределяем банки и возвращаем лишние фишки
-        total_won = 0
-        for pot in reversed(self.pots):  # Начинаем с последнего банка
-            if winner.name in pot["eligible_players"]:
-                winner.balance += pot["amount"]
-                total_won += pot["amount"]
-            else:
-                # Если победитель не участвует в этом банке, возвращаем фишки остальным игрокам
-                eligible_players = [p for p in self.players if p.name in pot["eligible_players"]]
-                if eligible_players:
-                    refund_per_player = pot["amount"] // len(eligible_players)
-                    for p in eligible_players:
-                        if p != winner:  # Не возвращаем победителю
-                            p.balance += refund_per_player
-                            print(f"Refunded {refund_per_player} to {p.name} from pot {pot['amount']}")
-        print(f"Winner {winner.name} won {total_won} from pots: {self.pots}")
-        # Возвращаем объект с именем и рукой
+        players_in_game = [p for p in self.players if not p.folded]
+        if len(players_in_game) == 1:
+            winner = players_in_game[0]
+            total_winnings = sum(pot["amount"] for pot in self.pots if winner.name in pot["eligible_players"])
+            self.players[self.players.index(winner)].balance += total_winnings
+            return {"player": winner.name, "hand": [str(card) for card in winner.hand], "winnings": total_winnings}
+
+        # Оцениваем руки для showdown
+        best_hand = None
+        winners = []
+        for player in players_in_game:
+            hand = player.hand + self.revealed_cards
+            hand_value = self.evaluate_hand(hand)
+            if best_hand is None or hand_value > best_hand:
+                best_hand = hand_value
+                winners = [player]
+            elif hand_value == best_hand:
+                winners.append(player)
+
+        # Распределяем банк между победителями
+        total_winnings = sum(
+            pot["amount"] for pot in self.pots if any(w.name in pot["eligible_players"] for w in winners))
+        winnings_per_player = total_winnings // len(winners)
+        for winner in winners:
+            self.players[self.players.index(winner)].balance += winnings_per_player
+
         return {
-            "name": winner.name,
-            "hand": [str(card) for card in winner.hand]  # Преобразуем карты в строки
+            "player": [w.name for w in winners],
+            "hand": [str(card) for card in winners[0].hand] if winners else [],
+            "winnings": total_winnings
         }

@@ -252,14 +252,20 @@ class ConnectionManager:
 
         all_folded = len(players_in_game) <= 1 and any(p["folded"] for p in game_state["players"])
 
-        # Если остался один игрок в игре (включая all-in), завершаем раунд
+        # Если остался один игрок в игре (включая all-in), переходим к showdown
         if len(players_in_game) <= 1:
-            winner = self.game.get_winner()
-            await self.broadcast_winner(winner, all_folded)
+            # Автоматически переходим к showdown, открывая все карты
+            while self.game.stage != "showdown" and self.game.advance_stage():
+                new_game_state = self.game.get_game_state(0)
+                print(f"Automatically advancing to next stage: {new_game_state['stage']}")
+            if self.game.stage == "showdown":
+                winner = self.game.get_winner()
+                await self.broadcast_winner(winner, all_folded)
+                return
+            await self.broadcast_game_state()
             return
 
-        # Если остался один игрок, который может действовать, и остальные либо сбросили, либо all-in,
-        # продолжаем переходить по стадиям до showdown
+        # Если остался один игрок, который может действовать, и остальные либо сбросили, либо all-in
         if len(active_players) <= 1:
             # Проверяем, уравняли ли все ставки
             max_bet = max(p["bet"] for p in players_in_game)
