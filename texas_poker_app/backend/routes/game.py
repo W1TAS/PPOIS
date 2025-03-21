@@ -65,17 +65,28 @@ class ConnectionManager:
                     print(f"Error sending state to {self.active_connections[websocket]['player_id']}: {e}")
 
     async def start_game(self):
+        # Получаем ID игроков и фильтруем тех, у кого баланс > 0
         player_ids = [data["player_id"] for data in self.active_connections.values()]
+        active_player_ids = [pid for pid in player_ids if self.players[pid].balance > 0]
         print(f"Player IDs in start_game: {player_ids}")
+        print(f"Active player IDs after filtering: {active_player_ids}")
+
+        # Проверяем, достаточно ли игроков для начала игры
+        if len(active_player_ids) < 2:
+            print("Not enough players with balance to start the game")
+            for websocket in self.active_connections:
+                await websocket.send_text(json.dumps({"error": "Not enough players with balance to start the game"}))
+            self.game = None
+            return
 
         # Сохраняем текущий dealer_index, если игра уже была
         if self.game:
             self.last_dealer_index = self.game.dealer_index
         print(f"Last dealer_index before new game: {self.last_dealer_index}")
 
-        # Создаём новую игру
+        # Создаём новую игру только с активными игроками
         self.game = PokerGame([])
-        self.game.players = [self.players[player_id] for player_id in player_ids]
+        self.game.players = [self.players[player_id] for player_id in active_player_ids]
 
         # Устанавливаем dealer_index перед началом нового раунда
         if self.last_dealer_index >= 0:
@@ -83,16 +94,30 @@ class ConnectionManager:
         else:
             self.game.dealer_index = 0  # Устанавливаем начальное значение, если игра новая
 
-        # Запускаем новый раунд
-        self.game.start_new_round()
+        # Запускаем новый раунд с обработкой исключений
+        try:
+            self.game.start_new_round()
+        except ValueError as e:
+            print(f"Error starting new round: {e}")
+            for websocket in self.active_connections:
+                await websocket.send_text(json.dumps({"error": str(e)}))
+            self.game = None
+            return
 
         print("Game started, sending initial state")
         for idx, (websocket, data) in enumerate(self.active_connections.items()):
-            data["index"] = idx
+            # Устанавливаем индекс только для активных игроков
+            if data["player_id"] in active_player_ids:
+                data["index"] = active_player_ids.index(data["player_id"])
+            else:
+                data["index"] = -1  # Игроки с нулевым балансом не участвуют
             self.active_connections[websocket]["ready"] = False
-            game_state = self.game.get_game_state(idx)
-            print(f"Sending to {data['player_id']} (index {idx}): {game_state}")
-            await websocket.send_text(json.dumps(game_state))
+            if data["index"] >= 0:
+                game_state = self.game.get_game_state(data["index"])
+                print(f"Sending to {data['player_id']} (index {data['index']}): {game_state}")
+                await websocket.send_text(json.dumps(game_state))
+            else:
+                await websocket.send_text(json.dumps({"error": "You cannot participate because your balance is 0"}))
 
     async def set_ready(self, websocket: WebSocket, ready: bool):
         if websocket in self.active_connections:

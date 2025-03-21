@@ -112,13 +112,29 @@ class PokerGame:
 
         # Снимаем Small Blind
         if len(self.players) > 1:
-            self.players[small_blind_index].place_bet(self.small_blind)
-            self.update_pots(self.small_blind, self.players[small_blind_index])
+            try:
+                small_blind_amount = min(self.small_blind, self.players[small_blind_index].balance)
+                if small_blind_amount == 0:
+                    raise ValueError(
+                        f"Player {self.players[small_blind_index].name} (Small Blind) has no chips, cannot start round")
+                self.players[small_blind_index].place_bet(small_blind_amount)
+                self.update_pots(small_blind_amount, self.players[small_blind_index])
+            except ValueError as e:
+                print(f"Error placing Small Blind: {e}")
+                raise
 
         # Снимаем Big Blind
         if len(self.players) > 1:
-            self.players[big_blind_index].place_bet(self.big_blind)
-            self.update_pots(self.big_blind, self.players[big_blind_index])
+            try:
+                big_blind_amount = min(self.big_blind, self.players[big_blind_index].balance)
+                if big_blind_amount == 0:
+                    raise ValueError(
+                        f"Player {self.players[big_blind_index].name} (Big Blind) has no chips, cannot start round")
+                self.players[big_blind_index].place_bet(big_blind_amount)
+                self.update_pots(big_blind_amount, self.players[big_blind_index])
+            except ValueError as e:
+                print(f"Error placing Big Blind: {e}")
+                raise
 
         # Устанавливаем текущего игрока (после Big Blind)
         self.current_player_index = (big_blind_index + 1) % len(self.players) if len(self.players) > 1 else 0
