@@ -83,7 +83,11 @@ body {
     justify-content: center;
     align-items: center;
     background-color: transparent;
-    overflow: hidden;
+    background-image: url("../images/table_cropped.png");
+    background-size: cover; /* Масштабировать изображение, чтобы оно покрывало весь контейнер */
+    background-position: center; /* Центрировать изображение */
+    background-repeat: no-repeat; /* Не повторять изображение */
+    overflow: hidden; /* Скрыть содержимое, выходящее за пределы */
 }
 
 #player-circle {
@@ -99,7 +103,7 @@ body {
 
 .player {
     position: absolute;
-    width: 10vw;
+    width: 5vw;
     text-align: center;
     padding: 1vw;
     background-color: rgba(0, 0, 0, 0.7);
@@ -154,7 +158,7 @@ body {
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0);
     padding: 2.5vw;
     border-radius: 1vw;
     z-index: 1;
@@ -173,7 +177,6 @@ body {
     flex-direction: column;
     align-items: center;
     margin-top: 2vh;
-    display: none;
 }
 
 #player-info > div {
@@ -333,6 +336,7 @@ button:disabled {
     border-radius: 0.4vw;
     font-size: 0.9vw;
     z-index: 5;
+    min-width: 3vw;
 }
 
 .player-bet {

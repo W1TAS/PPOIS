@@ -258,10 +258,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const containerWidth = gameContainer.offsetWidth;
     const containerHeight = gameContainer.offsetHeight;
     const aspectRatio = containerWidth / containerHeight;
-    const radius = Math.min(containerWidth, containerHeight) * 0.35;
+    const radius = Math.min(containerWidth, containerHeight) * 0.3;
 
     const centerX = containerWidth / 2;
-    const centerY = containerHeight / 2;
+    const centerY = containerHeight * 0.441 ;
 
     const currentPlayerIndex = players.findIndex(p => p.player_id === currentUsername || p.name === currentUsername);
     const totalPlayers = players.length;
