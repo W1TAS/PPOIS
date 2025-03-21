@@ -79,6 +79,17 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = JSON.parse(event.data);
             console.log("Received WebSocket message:", data);
 
+            if (data.error) {
+                console.log("Error received:", data.error);
+                alert(data.error); // Показываем ошибку пользователю
+                // Сбрасываем состояние игры
+                document.getElementById("table-center").style.display = "none";
+                document.getElementById("player-info").style.display = "none";
+                document.getElementById("stage").textContent = "";
+                document.getElementById("pot").textContent = "";
+                gameEnded = false;
+                return;
+            }
             // Обновляем баланс в состоянии "Pre-game"
             if (data.players && !data.stage && !data.winner && !data.all_ready) {
                 console.log("Pre-game state without winner, stage, or all ready");
