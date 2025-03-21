@@ -129,6 +129,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Обновляем баланс в состоянии игры
             if (data.stage) {
+                updatePlayerList(data.players, username, data.stage === "showdown" ? currentWinner : null, data.stage);
                 console.log("Game state");
                 document.getElementById("table-center").style.display = "block";
                 document.getElementById("player-info").style.display = "flex";
@@ -192,11 +193,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            // Обновляем баланс в состоянии победителя
             if (data.winner) {
+                updatePlayerList(data.players, username, currentWinner, data.stage);
                 console.log("Winner state:", data.winner);
                 gameEnded = true;
-                const winnerName = typeof data.winner === "object" ? (data.winner.name || data.winner.player_id) : data.winner;
+                const winner = data.winner;
+                const winnerName = typeof data.winner === "object"
+                    ? (data.winner.name || (Array.isArray(data.winner.player) ? data.winner.player[0] : data.winner.player) || data.winner.player_id)
+                    : data.winner;
+                console.log("Extracted winnerName:", winnerName);
                 currentWinner = winnerName;
                 currentPlayer = null;
                 if (data.players) {
@@ -204,12 +209,25 @@ document.addEventListener("DOMContentLoaded", () => {
                         playerBalances[player.name] = player.balance;
                         console.log(`Updated playerBalances[${player.name}] = ${playerBalances[player.name]} from winner state`);
                         if (player.hand) {
+                            console.log(`${player.name}: ${player.hand.join(", ")}`);
                             playerHands[player.name] = player.hand;
                         }
                     });
                     updatePlayerList(data.players, username, currentWinner);
                 } else {
                     console.warn("No players data with winner message");
+                }
+                // Отображаем информацию о победителе
+                const winnerDiv = document.getElementById("winner");
+                if (winnerDiv) {
+                    if (winnerName && winner.hand && winner.winnings) {
+                        winnerDiv.style.display = "block";
+                        winnerDiv.innerText = `Победитель: Игрок ${winnerName}, Рука: ${winner.hand.join(", ")}, Выигрыш: ${winner.winnings}`;
+                    } else {
+                        console.error("Winner data incomplete:", { winnerName, hand: winner.hand, winnings: winner.winnings });
+                    }
+                } else {
+                    console.error("Element #winner not found in DOM");
                 }
                 toggleButtons(false);
                 document.getElementById("action-bar").style.display = "none";
@@ -237,118 +255,124 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // main.js (фрагмент функции updatePlayerList)
 
-    function updatePlayerList(players, currentUsername, winnerName = null) {
-        const gameContainer = document.getElementById("game-container");
-        if (!gameContainer) {
-            console.error("Element #game-container not found in DOM");
-            return;
+    function updatePlayerList(players, currentUsername, winnerName = null, stage = null) {
+    const gameContainer = document.getElementById("game-container");
+    if (!gameContainer) {
+        console.error("Element #game-container not found in DOM");
+        return;
+    }
+    const playerCircle = document.getElementById("player-circle");
+    if (!playerCircle) {
+        console.error("Element #player-circle not found in DOM");
+        return;
+    }
+    playerCircle.innerHTML = "";
+
+    const containerWidth = gameContainer.offsetWidth;
+    const containerHeight = gameContainer.offsetHeight;
+    const aspectRatio = containerWidth / containerHeight;
+    const radius = Math.min(containerWidth, containerHeight) * 0.35;
+
+    const centerX = containerWidth / 2;
+    const centerY = containerHeight / 2;
+
+    const currentPlayerIndex = players.findIndex(p => p.player_id === currentUsername || p.name === currentUsername);
+    const totalPlayers = players.length;
+
+    const reorderedPlayers = [];
+    for (let i = 0; i < totalPlayers; i++) {
+        const index = (currentPlayerIndex + i) % totalPlayers;
+        reorderedPlayers.push(players[index]);
+    }
+
+    reorderedPlayers.forEach((player, index) => {
+        console.log(`Player ${player.name || player.player_id}: is_dealer=${player.is_dealer}, is_small_blind=${player.is_small_blind}, is_big_blind=${player.is_big_blind}, ready=${player.ready}, balance=${player.balance}`);
+
+        const angleDeg = 90 + (360 / totalPlayers) * index;
+        const angleRad = (angleDeg * Math.PI) / 180;
+        const xOffset = radius * Math.cos(angleRad) * aspectRatio;
+        const yOffset = radius * Math.sin(angleRad);
+
+        const xPercent = ((centerX + xOffset) / containerWidth) * 100;
+        const yPercent = ((centerY + yOffset) / containerHeight) * 100;
+
+        const playerDiv = document.createElement("div");
+        playerDiv.className = "player";
+        playerDiv.style.left = `${xPercent}%`;
+        playerDiv.style.top = `${yPercent}%`;
+
+        const playerId = player.player_id || player.name;
+        const balance = playerBalances[playerId] !== undefined ? playerBalances[playerId] : (player.balance || 0);
+        console.log(`Displaying balance for ${playerId}: ${balance}`);
+        const cardContainer = document.createElement("div");
+        cardContainer.className = "card-container";
+
+        if (player.is_dealer) {
+            console.log(`Displaying Dealer label for ${playerId}`);
+            const dealerLabel = document.createElement("div");
+            dealerLabel.className = "dealer-label";
+            dealerLabel.textContent = "Dealer";
+            playerDiv.appendChild(dealerLabel);
         }
-        const playerCircle = document.getElementById("player-circle");
-        if (!playerCircle) {
-            console.error("Element #player-circle not found in DOM");
-            return;
+
+        if (player.is_small_blind) {
+            const sbLabel = document.createElement("div");
+            sbLabel.className = "blind-label";
+            sbLabel.textContent = "SB: 10";
+            playerDiv.appendChild(sbLabel);
         }
-        playerCircle.innerHTML = "";
-
-        const containerWidth = gameContainer.offsetWidth;
-        const containerHeight = gameContainer.offsetHeight;
-        const aspectRatio = containerWidth / containerHeight;
-        const radius = Math.min(containerWidth, containerHeight) * 0.35;
-
-        const centerX = containerWidth / 2;
-        const centerY = containerHeight / 2;
-
-        const currentPlayerIndex = players.findIndex(p => p.player_id === currentUsername || p.name === currentUsername);
-        const totalPlayers = players.length;
-
-        const reorderedPlayers = [];
-        for (let i = 0; i < totalPlayers; i++) {
-            const index = (currentPlayerIndex + i) % totalPlayers;
-            reorderedPlayers.push(players[index]);
+        if (player.is_big_blind) {
+            const bbLabel = document.createElement("div");
+            bbLabel.className = "blind-label";
+            bbLabel.textContent = "BB: 20";
+            playerDiv.appendChild(bbLabel);
         }
 
-        reorderedPlayers.forEach((player, index) => {
-            console.log(`Player ${player.name || player.player_id}: is_dealer=${player.is_dealer}, is_small_blind=${player.is_small_blind}, is_big_blind=${player.is_big_blind}, ready=${player.ready}, balance=${player.balance}`);
+        if (winnerName && playerId === winnerName) {
+            console.log(`Adding Winner label for ${playerId}, winnerName: ${winnerName}, playerId type: ${typeof playerId}, winnerName type: ${typeof winnerName}`);
+            const winnerLabel = document.createElement("div");
+            winnerLabel.className = "winner-label";
+            winnerLabel.textContent = "Winner";
+            playerDiv.appendChild(winnerLabel);
+        }
 
-            const angleDeg = 90 + (360 / totalPlayers) * index;
-            const angleRad = (angleDeg * Math.PI) / 180;
-            const xOffset = radius * Math.cos(angleRad) * aspectRatio;
-            const yOffset = radius * Math.sin(angleRad);
+        if (currentPlayer && playerId === currentPlayer && !winnerName) {
+            const currentLabel = document.createElement("div");
+            currentLabel.className = "current-label";
+            currentLabel.textContent = "Current";
+            playerDiv.appendChild(currentLabel);
+        }
 
-            const xPercent = ((centerX + xOffset) / containerWidth) * 100;
-            const yPercent = ((centerY + yOffset) / containerHeight) * 100;
-
-            const playerDiv = document.createElement("div");
-            playerDiv.className = "player";
-            playerDiv.style.left = `${xPercent}%`;
-            playerDiv.style.top = `${yPercent}%`;
-
-            const playerId = player.player_id || player.name;
-            const balance = playerBalances[playerId] !== undefined ? playerBalances[playerId] : (player.balance || 0);
-            console.log(`Displaying balance for ${playerId}: ${balance}`);
-            const cardContainer = document.createElement("div");
-            cardContainer.className = "card-container";
-
-            if (player.is_dealer) {
-                console.log(`Displaying Dealer label for ${playerId}`);
-                const dealerLabel = document.createElement("div");
-                dealerLabel.className = "dealer-label";
-                dealerLabel.textContent = "Dealer";
-                playerDiv.appendChild(dealerLabel);
-            }
-
-            if (player.is_small_blind) {
-                const sbLabel = document.createElement("div");
-                sbLabel.className = "blind-label";
-                sbLabel.textContent = "SB: 10";
-                playerDiv.appendChild(sbLabel);
-            }
-            if (player.is_big_blind) {
-                const bbLabel = document.createElement("div");
-                bbLabel.className = "blind-label";
-                bbLabel.textContent = "BB: 20";
-                playerDiv.appendChild(bbLabel);
-            }
-
+        if (player.name === currentUsername) {
+            const hand = playerHands[player.name] || [];
+            updatePlayerHand(hand, true, cardContainer);
+        } else if (stage === "showdown") {
+            const hand = player.hand && player.hand.length > 0 ? player.hand : (playerHands[playerId] || []);
+            console.log(`Showdown: Displaying hand for ${playerId}: ${hand.join(", ")}`);
+            updatePlayerHand(hand, true, cardContainer);
+        } else {
             if (winnerName && playerId === winnerName) {
-                const winnerLabel = document.createElement("div");
-                winnerLabel.className = "winner-label";
-                winnerLabel.textContent = "Winner";
-                playerDiv.appendChild(winnerLabel);
-            }
-
-            if (currentPlayer && playerId === currentPlayer && !winnerName) {
-                const currentLabel = document.createElement("div");
-                currentLabel.className = "current-label";
-                currentLabel.textContent = "Current";
-                playerDiv.appendChild(currentLabel);
-            }
-
-            if (player.name === currentUsername) {
-                const hand = playerHands[player.name] || [];
+                const hand = player.hand && player.hand.length > 0 ? player.hand : (playerHands[playerId] || []);
+                console.log(`Displaying winner's hand for ${playerId}: ${hand.join(", ")}`);
                 updatePlayerHand(hand, true, cardContainer);
             } else {
-                if (winnerName && playerId === winnerName) {
-                    const hand = player.hand && player.hand.length > 0 ? player.hand : (playerHands[playerId] || []);
-                    updatePlayerHand(hand, true, cardContainer);
-                } else {
-                    for (let i = 0; i < 2; i++) {
-                        const img = document.createElement("img");
-                        img.src = "/static/images/card_back_black.png";
-                        cardContainer.appendChild(img);
-                    }
+                for (let i = 0; i < 2; i++) {
+                    const img = document.createElement("img");
+                    img.src = "/static/images/card_back_black.png";
+                    cardContainer.appendChild(img);
                 }
             }
+        }
 
-            if (player.ready !== undefined) {
-                playerDiv.innerHTML += `${playerId}<br>${player.ready ? "Ready" : "Not Ready"}<br><span class="balance">${balance}</span>`;
-            } else {
-                playerDiv.innerHTML += `${playerId}<br><span class="balance">${balance}</span>`;
-            }
-            playerDiv.appendChild(cardContainer);
-            playerCircle.appendChild(playerDiv);
-        });
-    }
+        if (player.ready !== undefined) {
+            playerDiv.innerHTML += `${playerId}<br>${player.ready ? "Ready" : "Not Ready"}<br><span class="balance">${balance}</span>`;
+        } else {
+            playerDiv.innerHTML += `${playerId}<br><span class="balance">${balance}</span>`;
+        }
+        playerDiv.appendChild(cardContainer);
+        playerCircle.appendChild(playerDiv);
+    });
+}
 
     function updatePlayerHand(hand, isCurrentPlayer, container = document.getElementById("player-hand")) {
         container.innerHTML = "";
