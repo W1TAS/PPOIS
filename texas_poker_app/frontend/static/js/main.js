@@ -98,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     playerBalances[player.player_id] = player.balance !== undefined ? player.balance : (playerBalances[player.player_id] || 0);
                     console.log(`Updated playerBalances[${player.player_id}] = ${playerBalances[player.player_id]}`);
                 });
-                updatePlayerList(data.players, username, currentWinner);
+                updatePlayerList(data.players, username, currentWinner, null);
                 document.getElementById("ready-button").style.display = "block";
                 document.getElementById("action-bar").style.display = "none";
                 toggleButtons(false);
@@ -123,7 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         playerBalances[player.player_id] = player.balance !== undefined ? player.balance : (playerBalances[player.player_id] || 0);
                         console.log(`Updated playerBalances[${player.player_id}] = ${playerBalances[player.player_id]}`);
                     });
-                    updatePlayerList(data.players, username, null);
+                    updatePlayerList(data.players, username, null, null);
                 }
             }
 
@@ -194,7 +194,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             if (data.winner) {
-                updatePlayerList(data.players, username, currentWinner, data.stage);
                 console.log("Winner state:", data.winner);
                 gameEnded = true;
                 const winner = data.winner;
@@ -213,21 +212,9 @@ document.addEventListener("DOMContentLoaded", () => {
                             playerHands[player.name] = player.hand;
                         }
                     });
-                    updatePlayerList(data.players, username, currentWinner);
+                    updatePlayerList(data.players, username, currentWinner, data.stage);
                 } else {
                     console.warn("No players data with winner message");
-                }
-                // Отображаем информацию о победителе
-                const winnerDiv = document.getElementById("winner");
-                if (winnerDiv) {
-                    if (winnerName && winner.hand && winner.winnings) {
-                        winnerDiv.style.display = "block";
-                        winnerDiv.innerText = `Победитель: Игрок ${winnerName}, Рука: ${winner.hand.join(", ")}, Выигрыш: ${winner.winnings}`;
-                    } else {
-                        console.error("Winner data incomplete:", { winnerName, hand: winner.hand, winnings: winner.winnings });
-                    }
-                } else {
-                    console.error("Element #winner not found in DOM");
                 }
                 toggleButtons(false);
                 document.getElementById("action-bar").style.display = "none";

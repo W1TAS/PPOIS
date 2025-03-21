@@ -419,7 +419,7 @@ class PokerGame:
         winners = []
         for player in players_in_game:
             hand = player.hand + self.revealed_cards
-            hand_value = self.evaluate_hand(hand)
+            hand_value = self.get_best_hand(player)
             if best_hand is None or hand_value > best_hand:
                 best_hand = hand_value
                 winners = [player]

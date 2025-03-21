@@ -121,27 +121,13 @@ body {
     color: white;
 }
 
-#winner {
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 10px;
-    border-radius: 5px;
-    font-size: 18px;
-    font-weight: bold;
-    z-index: 10;
-    display: none;
-}
 
 .winner-label {
     position: absolute;
-    top: -6vh; /* Располагаем надпись над блоком игрока */
+    top: -6vh;
     left: 50%;
     transform: translateX(-50%);
-    background-color: #28a745; /* Зелёный фон */
+    background-color: #28a745;
     color: white;
     padding: 0.5vh 1vw;
     border-radius: 0.4vw;
