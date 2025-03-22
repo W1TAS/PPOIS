@@ -412,15 +412,16 @@ class PokerGame:
         return None
 
     def get_winner(self):
+        print(f"Calling get_winner for stage: {self.stage}")
         players_in_game = [p for p in self.players if not p.folded]
         if len(players_in_game) == 1:
             winner = players_in_game[0]
             total_winnings = sum(pot["amount"] for pot in self.pots if winner.name in pot["eligible_players"])
             self.players[self.players.index(winner)].balance += total_winnings
-            print(f"Winner (single player): {winner.name}, winnings: {total_winnings}")
+            print(
+                f"Winner (single player): {winner.name}, winnings: {total_winnings}, new balance: {self.players[self.players.index(winner)].balance}")
             return {"player": winner.name, "hand": [str(card) for card in winner.hand], "winnings": total_winnings}
 
-        # Оцениваем руки для showdown
         best_hand = None
         winners = []
         for player in players_in_game:
@@ -438,10 +439,14 @@ class PokerGame:
         winnings_per_player = total_winnings // len(winners)
         for winner in winners:
             self.players[self.players.index(winner)].balance += winnings_per_player
+            print(
+                f"Adding winnings to {winner.name}: {winnings_per_player}, new balance: {self.players[self.players.index(winner)].balance}")
         print(
             f"Winners: {[w.name for w in winners]}, total winnings: {total_winnings}, per player: {winnings_per_player}")
-        return {
+        result = {
             "player": [w.name for w in winners],
             "hand": [str(card) for card in winners[0].hand] if winners else [],
             "winnings": total_winnings
         }
+        self.pots = [{"amount": 0, "eligible_players": [p.name for p in self.players]}]  # Сбрасываем банк
+        return result

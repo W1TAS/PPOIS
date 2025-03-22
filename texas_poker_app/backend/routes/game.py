@@ -266,24 +266,17 @@ class ConnectionManager:
         print(
             f"Checking stage: {self.game.stage}, active_players: {len(active_players)}, players_in_game: {len(players_in_game)}")
 
-        if self.game.stage == "showdown":
+        # Проверяем, если остался один игрок в игре
+        if len(players_in_game) <= 1:
+            while self.game.stage != "showdown" and self.game.advance_stage():
+                new_game_state = self.game.get_game_state(0)
+                print(f"Automatically advancing to next stage: {new_game_state['stage']}")
             winner = self.game.get_winner()
             print(f"Winner determined: {winner}")
             await self.broadcast_winner(winner, all_folded)
             return
 
-        if len(players_in_game) <= 1:
-            while self.game.stage != "showdown" and self.game.advance_stage():
-                new_game_state = self.game.get_game_state(0)
-                print(f"Automatically advancing to next stage: {new_game_state['stage']}")
-            if self.game.stage == "showdown":
-                winner = self.game.get_winner()
-                print(f"Winner determined: {winner}")
-                await self.broadcast_winner(winner, all_folded)
-                return
-            await self.broadcast_game_state()
-            return
-
+        # Проверяем, если остался один активный игрок (остальные all-in или без фишек)
         if len(active_players) <= 1:
             max_bet = max(p["bet"] for p in players_in_game)
             all_bets_settled = all(p["bet"] == max_bet or self.players[p["name"]].balance == 0 for p in players_in_game)
@@ -291,14 +284,14 @@ class ConnectionManager:
                 while self.game.stage != "showdown" and self.game.advance_stage():
                     new_game_state = self.game.get_game_state(0)
                     print(f"Automatically advancing to next stage: {new_game_state['stage']}")
-                if self.game.stage == "showdown":
-                    winner = self.game.get_winner()
-                    print(f"Winner determined: {winner}")
-                    await self.broadcast_winner(winner, all_folded)
-                    return
-                await self.broadcast_game_state()
+                winner = self.game.get_winner()
+                print(f"Winner determined: {winner}")
+                await self.broadcast_winner(winner, all_folded)
                 return
+            await self.broadcast_game_state()
+            return
 
+        # Обычный переход между стадиями
         if self.game.can_advance_stage():
             if self.game.advance_stage():
                 new_game_state = self.game.get_game_state(0)
@@ -313,11 +306,6 @@ class ConnectionManager:
                 print("Cannot advance stage after advance_stage call, broadcasting current state")
                 await self.broadcast_game_state()
         else:
-            if self.game.stage == "showdown":
-                winner = self.game.get_winner()
-                print(f"Winner determined: {winner}")
-                await self.broadcast_winner(winner, all_folded)
-                return
             print("Cannot advance stage, broadcasting current state")
             await self.broadcast_game_state()
 
