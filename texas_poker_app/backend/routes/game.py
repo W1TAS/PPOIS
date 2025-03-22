@@ -293,18 +293,18 @@ class ConnectionManager:
 
         # Обычный переход между стадиями
         if self.game.can_advance_stage():
-            if self.game.advance_stage():
-                new_game_state = self.game.get_game_state(0)
+            advanced = self.game.advance_stage()
+            new_game_state = self.game.get_game_state(0)
+            if advanced:
                 print(f"Stage advanced to: {new_game_state['stage']}")
-                if new_game_state["stage"] == "showdown":
-                    winner = self.game.get_winner()
-                    print(f"Winner determined: {winner}")
-                    await self.broadcast_winner(winner, all_folded)
-                    return
-                await self.broadcast_game_state()
-            else:
+            if new_game_state["stage"] == "showdown":  # Проверяем стадию после попытки продвижения
+                winner = self.game.get_winner()
+                print(f"Winner determined: {winner}")
+                await self.broadcast_winner(winner, all_folded)
+                return
+            if not advanced:
                 print("Cannot advance stage after advance_stage call, broadcasting current state")
-                await self.broadcast_game_state()
+            await self.broadcast_game_state()
         else:
             print("Cannot advance stage, broadcasting current state")
             await self.broadcast_game_state()

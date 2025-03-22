@@ -420,7 +420,10 @@ class PokerGame:
             self.players[self.players.index(winner)].balance += total_winnings
             print(
                 f"Winner (single player): {winner.name}, winnings: {total_winnings}, new balance: {self.players[self.players.index(winner)].balance}")
-            return {"player": winner.name, "hand": [str(card) for card in winner.hand], "winnings": total_winnings}
+            result = {"player": winner.name, "hand": [str(card) for card in winner.hand], "winnings": total_winnings}
+            # Сбрасываем банк
+            self.pots = [{"amount": 0, "eligible_players": [p.name for p in self.players]}]
+            return result
 
         best_hand = None
         winners = []
@@ -448,5 +451,6 @@ class PokerGame:
             "hand": [str(card) for card in winners[0].hand] if winners else [],
             "winnings": total_winnings
         }
-        self.pots = [{"amount": 0, "eligible_players": [p.name for p in self.players]}]  # Сбрасываем банк
+        # Сбрасываем банк
+        self.pots = [{"amount": 0, "eligible_players": [p.name for p in self.players]}]
         return result

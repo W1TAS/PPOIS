@@ -503,6 +503,65 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // main.js
+    function handleWebSocketMessage(event) {
+        const data = JSON.parse(event.data);
+        console.log("Received WebSocket message:", data);
+
+        if (data.type === "winner") {
+            console.log("Winner announced:", data.winner);
+            // Обновляем баланс после объявления победителя
+            if (data.winner && data.winner.player) {
+                const winnerMessage = `Winner: ${data.winner.player} with hand ${data.winner.hand.join(", ")}`;
+                console.log(winnerMessage);
+                // Можно добавить отображение победителя на UI
+            }
+        } else if (data.stage) {
+            console.log("Game state");
+            updateGameState(data);
+        } else if (data.players && !data.stage) {
+            console.log("Players state");
+            updatePlayersState(data);
+        }
+    }
+
+    function updateGameState(data) {
+        // Обновляем карты на столе
+        console.log("Community cards received:", data.community_cards);
+        displayCommunityCards(data.community_cards);
+
+        // Обновляем банк
+        console.log("Pots received:", data.pots);
+        displayPots(data.pots);
+
+        // Обновляем баланс текущего игрока
+        if (data.balance !== undefined) {
+            console.log(`Updated playerBalances[${playerId}] = ${data.balance} from data.balance`);
+            playerBalances[playerId] = data.balance;
+        }
+
+        // Обновляем баланс всех игроков
+        data.players.forEach(player => {
+            console.log(`Updated playerBalances[${player.name}] = ${player.balance} from data.players`);
+            playerBalances[player.name] = player.balance;
+            displayPlayer(player);
+        });
+
+        // Отображаем текущего игрока и состояние игры
+        const isActivePlayer = data.current_player === playerId;
+        const gameEnded = data.stage === "showdown";
+        console.log(`Current player: ${data.current_player}, isActivePlayer: ${isActivePlayer}, gameEnded: ${gameEnded}, stage: ${data.stage}`);
+        updateGameControls(data.stage, isActivePlayer, gameEnded);
+
+        // Если стадия showdown, отображаем карты
+        if (data.stage === "showdown") {
+            data.players.forEach(player => {
+                console.log(`Showdown: Displaying hand for ${player.name}:`, player.hand || []);
+                // Отображаем карты игрока на UI
+            });
+        }
+    }
+
     addEventListenerSafe("login-button", "click", login);
     addEventListenerSafe("register-button", "click", register);
     addEventListenerSafe("ready-button", "click", () => {
