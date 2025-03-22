@@ -347,11 +347,10 @@ class ConnectionManager:
             "all_folded": all_folded,
         }
         for websocket, data in self.active_connections.items():
-            player_index = data["index"]  # Используем сохранённый индекс
-            if player_index < 0:  # Игрок не участвует в игре
+            player_index = data["index"]
+            if player_index < 0:
                 continue
             game_state = self.game.get_game_state(player_index)
-            # Добавляем карты всех игроков в game_state для showdown
             game_state["players"] = [
                 {
                     "name": p.name,
@@ -366,11 +365,14 @@ class ConnectionManager:
                 }
                 for i, p in enumerate(self.game.players)
             ]
-            game_state.update(state)  # Обновляем состояние с информацией о победителе
+            game_state.update(state)
             try:
                 await websocket.send_text(json.dumps(game_state))
             except Exception as e:
                 print(f"Error sending winner to {self.active_connections[websocket]['player_id']}: {e}")
+        # Сбрасываем total_bet после объявления победителя
+        for player in self.game.players:
+            player.total_bet = 0
 
 manager = ConnectionManager()
 
