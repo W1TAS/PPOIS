@@ -21,6 +21,8 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentWinner = null;
     let gameEnded = false;
     let currentPlayer = null;
+    let lastCommunityCards = []; // Для хранения последних общих карт
+    let lastStage = null; // Для хранения последней стадии
 
     function showGame() {
         console.log("Switching to game view");
@@ -84,6 +86,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 const data = JSON.parse(event.data);
                 console.log("Received WebSocket message:", data);
 
+                // Обработка пинг-понг сообщений
+                if (data.type === "ping") {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: "pong" }));
+                        console.log("Sent pong response");
+                    }
+                    return;
+                }
+
                 if (data.error) {
                     console.log("Error received:", data.error);
                     alert(data.error);
@@ -92,6 +103,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     document.getElementById("stage").textContent = "";
                     document.getElementById("pot").textContent = "";
                     gameEnded = false;
+                    lastCommunityCards = []; // Сбрасываем общие карты при ошибке
+                    lastStage = null;
                     return;
                 }
 
@@ -106,8 +119,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     document.getElementById("ready-button").style.display = "block";
                     document.getElementById("action-bar").style.display = "none";
                     toggleButtons(false);
-                    document.getElementById("table-center").style.display = "none";
-                    document.getElementById("player-info").style.display = "none";
+                    // Не скрываем table-center, если игра только что закончилась
+                    if (lastCommunityCards.length > 0) {
+                        document.getElementById("table-center").style.display = "block";
+                        document.getElementById("player-info").style.display = "flex";
+                        updateCommunityCards(lastCommunityCards, lastStage);
+                    } else {
+                        document.getElementById("table-center").style.display = "none";
+                        document.getElementById("player-info").style.display = "none";
+                    }
                 }
 
                 if (data.all_ready) {
@@ -116,6 +136,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     currentWinner = null;
                     currentPlayer = null;
                     playerHands = {};
+                    lastCommunityCards = []; // Сбрасываем общие карты перед новым раундом
+                    lastStage = null;
                     document.getElementById("table-center").style.display = "none";
                     document.getElementById("player-info").style.display = "none";
                     document.getElementById("action-bar").style.display = "none";
@@ -143,6 +165,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (!gameEnded) {
                         updatePlayerHand(data.hand, username === data.current_player);
                         updateCommunityCards(data.community_cards, data.stage);
+                        lastCommunityCards = data.community_cards || []; // Сохраняем общие карты
+                        lastStage = data.stage; // Сохраняем стадию
                         if (data.pots) {
                             console.log("Pots received:", data.pots);
                             const total_pot = data.pots.reduce((sum, pot) => sum + pot.amount, 0);
@@ -221,6 +245,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     toggleButtons(false);
                     document.getElementById("action-bar").style.display = "none";
                     document.getElementById("ready-button").style.display = "block";
+                    // Убедимся, что table-center остаётся видимым
+                    document.getElementById("table-center").style.display = "block";
+                    document.getElementById("player-info").style.display = "flex";
+                    updateCommunityCards(lastCommunityCards, lastStage); // Восстанавливаем общие карты
                 }
 
                 if (data.type === "winner") {
@@ -235,8 +263,8 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         };
 
-        ws.onclose = () => {
-            console.log("WebSocket disconnected, attempting to reconnect...");
+        ws.onclose = (event) => {
+            console.log("WebSocket closed with code:", event.code, "reason:", event.reason);
             setTimeout(() => {
                 connectWebSocket();
             }, 1000);
@@ -462,6 +490,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updateCommunityCards(cards, stage) {
         const container = document.getElementById("community-cards");
+        if (!container) {
+            console.error("Element #community-cards not found in DOM");
+            return;
+        }
         container.innerHTML = "";
         for (let i = 0; i < 5; i++) {
             const img = document.createElement("img");
