@@ -86,12 +86,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 const data = JSON.parse(event.data);
                 console.log("Received WebSocket message:", data);
 
+                // Сбрасываем currentWinner, если игра не завершена
+                if (!data.winner && data.stage !== "showdown") {
+                    currentWinner = null;
+                }
+
                 // Обработка пинг-понг сообщений
                 if (data.type === "ping") {
                     if (ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ type: "pong" }));
                         console.log("Sent pong response");
                     }
+                    return;
+                }
+
+                // Обработка состояния ожидания
+                if (data.message === "Waiting for the current round to finish") {
+                    console.log("Player is waiting for the current round to finish");
+                    gameEnded = false;
+                    document.getElementById("table-center").style.display = "none";
+                    document.getElementById("player-info").style.display = "none";
+                    document.getElementById("stage").textContent = "Waiting for the current round to finish...";
+                    document.getElementById("pot").textContent = "";
+                    document.getElementById("action-bar").style.display = "none";
+                    document.getElementById("ready-button").style.display = "none";
+                    toggleButtons(false);
                     return;
                 }
 
@@ -105,12 +124,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     gameEnded = false;
                     lastCommunityCards = []; // Сбрасываем общие карты при ошибке
                     lastStage = null;
+                    currentWinner = null; // Сбрасываем победителя при ошибке
                     return;
                 }
 
                 if (data.players && !data.stage && !data.winner && !data.all_ready) {
                     console.log("Pre-game state without winner, stage, or all ready");
                     gameEnded = false;
+                    currentWinner = null; // Сбрасываем победителя в pre-game состоянии
                     data.players.forEach(player => {
                         playerBalances[player.player_id] = player.balance !== undefined ? player.balance : (playerBalances[player.player_id] || 0);
                         console.log(`Updated playerBalances[${player.player_id}] = ${playerBalances[player.player_id]}`);
@@ -128,6 +149,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         document.getElementById("table-center").style.display = "none";
                         document.getElementById("player-info").style.display = "none";
                     }
+                    document.getElementById("stage").textContent = "";
+                    document.getElementById("pot").textContent = "";
                 }
 
                 if (data.all_ready) {

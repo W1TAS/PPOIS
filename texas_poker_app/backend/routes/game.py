@@ -46,17 +46,32 @@ class ConnectionManager:
                     self.game.players[player_index].fold()
                     print(f"Player {player_id} folded due to disconnect")
 
+                    players_in_game = [p for p in self.game.players if not p.folded]
                     active_players = [p for p in self.game.players if not p.folded and p.balance > 0]
-                    if len(active_players) <= 1:
-                        print("Only one active player left, ending game")
+
+                    if len(players_in_game) <= 1:
+                        print("Only one player left in game, ending round")
+                        while self.game.stage != "showdown" and self.game.advance_stage():
+                            new_game_state = self.game.get_game_state(0)
+                            print(f"Automatically advancing to next stage: {new_game_state['stage']}")
                         winner = self.game.get_winner()
                         await self.broadcast_winner(winner, True)
                         return
 
-                    self.game.current_player_index = self.game.next_active_player(self.game.current_player_index)
+                    next_player_index = self.game.next_active_player(self.game.current_player_index)
+                    if next_player_index == -1:
+                        print("No active players left after disconnect, ending round")
+                        while self.game.stage != "showdown" and self.game.advance_stage():
+                            new_game_state = self.game.get_game_state(0)
+                            print(f"Automatically advancing to next stage: {new_game_state['stage']}")
+                        winner = self.game.get_winner()
+                        await self.broadcast_winner(winner, True)
+                        return
+                    self.game.current_player_index = next_player_index
                     await self.check_and_advance_stage()
 
-            await self.broadcast_state()
+            # Убираем вызов broadcast_state, так как broadcast_game_state уже отправляет состояние
+            # await self.broadcast_state()
 
     async def broadcast_state(self):
         if not self.active_connections:
@@ -66,7 +81,7 @@ class ConnectionManager:
             "players": [
                 {
                     "player_id": data["player_id"],
-                    "ready": data["ready"],
+                    "ready": data["ready"] if not self.game else None,  # Отправляем ready только если игра не активна
                     "balance": self.players[data["player_id"]].balance,
                     "is_dealer": self.last_dealer_index >= 0 and idx == (self.last_dealer_index + 1) % num_players,
                     "is_small_blind": self.last_dealer_index >= 0 and idx == (self.last_dealer_index + 2) % num_players,
@@ -84,10 +99,11 @@ class ConnectionManager:
             disconnected = []
             for websocket in list(self.active_connections.keys()):
                 try:
-                    if websocket.client_state == WebSocketState.CONNECTED:  # Исправляем проверку состояния
+                    if websocket.client_state == WebSocketState.CONNECTED:
                         await websocket.send_text(json.dumps(state))
                     else:
-                        print(f"Skipping send to {self.active_connections[websocket]['player_id']}: WebSocket not connected")
+                        print(
+                            f"Skipping send to {self.active_connections[websocket]['player_id']}: WebSocket not connected")
                         disconnected.append(websocket)
                 except (WebSocketDisconnect, RuntimeError) as e:
                     print(f"Error sending state to {self.active_connections[websocket]['player_id']}: {e}")
@@ -238,15 +254,21 @@ class ConnectionManager:
             return
 
         if not self.game:
-            # Если игра не активна, просто устанавливаем ready
+            # Если игра не активна, устанавливаем ready и начинаем новую игру, если все готовы
             await self.set_ready(websocket, True)
             return
 
+        # Если игра активна и не в стадии showdown, игнорируем сообщение о готовности
+        if self.game.stage != "showdown":
+            await websocket.send_text(json.dumps({"error": "Cannot set ready during an active game"}))
+            return
+
+        # Если стадия showdown, обрабатываем готовность для начала нового раунда
         self.active_connections[websocket]["ready"] = True
         all_ready = all(data["ready"] for data in self.active_connections.values())
         if all_ready:
             self.last_dealer_index = self.game.dealer_index
-            self.game = None  # Сбрасываем игру после того, как все готовы
+            self.game = None  # Сбрасываем игру только после showdown
             state = {
                 "all_ready": True,
                 "players": [
@@ -299,8 +321,8 @@ class ConnectionManager:
                 except (WebSocketDisconnect, RuntimeError) as e:
                     print(f"Error sending ready state to {self.active_connections[ws]['player_id']}: {e}")
                     disconnected.append(ws)
-            for ws in disconnected:
-                await self.disconnect(ws)
+                for ws in disconnected:
+                    await self.disconnect(ws)
 
     async def check_and_advance_stage(self):
         if not self.game:
@@ -313,6 +335,7 @@ class ConnectionManager:
         print(
             f"Checking stage: {self.game.stage}, active_players: {len(active_players)}, players_in_game: {len(players_in_game)}")
 
+        # Завершаем игру, только если в игре остаётся 0 или 1 игрок, не в фолде
         if len(players_in_game) <= 1:
             while self.game.stage != "showdown" and self.game.advance_stage():
                 new_game_state = self.game.get_game_state(0)
@@ -322,6 +345,7 @@ class ConnectionManager:
             await self.broadcast_winner(winner, all_folded)
             return
 
+        # Проверяем, если у всех игроков, кроме одного, закончились фишки
         if len(active_players) <= 1:
             max_bet = max(p["bet"] for p in players_in_game)
             all_bets_settled = all(p["bet"] == max_bet or self.players[p["name"]].balance == 0 for p in players_in_game)
@@ -336,6 +360,7 @@ class ConnectionManager:
             await self.broadcast_game_state()
             return
 
+        # Если стадия может быть продвинута (все ставки уравнены и раунд завершён)
         if self.game.can_advance_stage():
             advanced = self.game.advance_stage()
             new_game_state = self.game.get_game_state(0)
@@ -359,9 +384,9 @@ class ConnectionManager:
         disconnected = []
         for websocket in list(self.active_connections.keys()):
             player_id = self.active_connections[websocket]["player_id"]
-            if player_id in self.waiting_players:  # Пропускаем ожидающих игроков
+            if player_id in self.waiting_players:
                 continue
-            if player_id not in [p.name for p in self.game.players]:  # Пропускаем игроков, которых нет в текущей игре
+            if player_id not in [p.name for p in self.game.players]:
                 continue
             try:
                 if websocket.client_state == WebSocketState.CONNECTED:
@@ -371,6 +396,8 @@ class ConnectionManager:
                         player["balance"] = self.players[player["name"]].balance
                         if self.game.stage == "showdown":
                             player["ready"] = self.active_connections[websocket]["ready"]
+                        else:
+                            player["ready"] = None  # Не отправляем ready, если игра не в стадии showdown
                     print(f"Sending game state to {player_id}: {game_state}")
                     await websocket.send_text(json.dumps(game_state))
                 else:

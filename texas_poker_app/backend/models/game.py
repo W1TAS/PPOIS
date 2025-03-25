@@ -212,7 +212,6 @@ class PokerGame:
         if not active_players:
             return -1  # Возвращаем -1, если нет активных игроков
         next_index = (start_index + 1) % len(self.players)
-        # Проверяем, чтобы не зациклиться
         start = next_index
         while next_index not in active_players:
             next_index = (next_index + 1) % len(self.players)
