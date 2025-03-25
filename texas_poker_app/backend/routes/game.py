@@ -113,7 +113,6 @@ class ConnectionManager:
 
     async def start_game(self):
         player_ids = [data["player_id"] for data in self.active_connections.values()]
-        # Фильтруем игроков: исключаем тех, у кого баланс 0 или кто в ожидании
         active_player_ids = [pid for pid in player_ids if
                              self.players[pid].balance > 0 and pid not in self.waiting_players]
         print(f"Player IDs in start_game: {player_ids}")
@@ -125,7 +124,8 @@ class ConnectionManager:
             for websocket in list(self.active_connections.keys()):
                 try:
                     if websocket.client_state == WebSocketState.CONNECTED:
-                        await websocket.send_text(json.dumps({"error": "Not enough players with balance to start the game"}))
+                        await websocket.send_text(
+                            json.dumps({"error": "Not enough players with balance to start the game"}))
                     else:
                         disconnected.append(websocket)
                 except (WebSocketDisconnect, RuntimeError) as e:
@@ -175,10 +175,14 @@ class ConnectionManager:
                     if data["player_id"] in active_player_ids:
                         player_index = active_player_ids.index(data["player_id"])
                         game_state = self.game.get_game_state(player_index)
+                        # Убедимся, что ready не отправляется в активной игре
+                        for player in game_state["players"]:
+                            player["ready"] = None  # Не отправляем ready во время игры
                         print(f"Sending to {data['player_id']}: {game_state}")
                         await websocket.send_text(json.dumps(game_state))
                     else:
-                        await websocket.send_text(json.dumps({"error": "You cannot participate because your balance is 0 or you are waiting"}))
+                        await websocket.send_text(json.dumps(
+                            {"error": "You cannot participate because your balance is 0 or you are waiting"}))
                 else:
                     disconnected.append(websocket)
             except (WebSocketDisconnect, RuntimeError) as e:
@@ -258,17 +262,16 @@ class ConnectionManager:
             await self.set_ready(websocket, True)
             return
 
-        # Если игра активна и не в стадии showdown, игнорируем сообщение о готовности
         if self.game.stage != "showdown":
             await websocket.send_text(json.dumps({"error": "Cannot set ready during an active game"}))
             return
 
-        # Если стадия showdown, обрабатываем готовность для начала нового раунда
+        # Устанавливаем ready для игрока
         self.active_connections[websocket]["ready"] = True
         all_ready = all(data["ready"] for data in self.active_connections.values())
         if all_ready:
             self.last_dealer_index = self.game.dealer_index
-            self.game = None  # Сбрасываем игру только после showdown
+            self.game = None
             state = {
                 "all_ready": True,
                 "players": [
@@ -303,6 +306,7 @@ class ConnectionManager:
                 await self.disconnect(ws)
             await self.start_game()
         else:
+            # Отправляем обновлённое состояние игры
             disconnected = []
             for ws in list(self.active_connections.keys()):
                 player_id = self.active_connections[ws]["player_id"]
@@ -321,8 +325,8 @@ class ConnectionManager:
                 except (WebSocketDisconnect, RuntimeError) as e:
                     print(f"Error sending ready state to {self.active_connections[ws]['player_id']}: {e}")
                     disconnected.append(ws)
-                for ws in disconnected:
-                    await self.disconnect(ws)
+            for ws in disconnected:
+                await self.disconnect(ws)
 
     async def check_and_advance_stage(self):
         if not self.game:
@@ -397,7 +401,7 @@ class ConnectionManager:
                         if self.game.stage == "showdown":
                             player["ready"] = self.active_connections[websocket]["ready"]
                         else:
-                            player["ready"] = None  # Не отправляем ready, если игра не в стадии showdown
+                            player["ready"] = None  # Не отправляем ready, если игра активна
                     print(f"Sending game state to {player_id}: {game_state}")
                     await websocket.send_text(json.dumps(game_state))
                 else:
@@ -415,46 +419,49 @@ class ConnectionManager:
             return
 
         state = {
+            "stage": "showdown",  # Явно указываем стадию
             "winner": winner_data,
             "all_folded": all_folded,
+            "players": [
+                {
+                    "name": p.name,
+                    "folded": p.folded,
+                    "bet": p.current_bet,
+                    "total_bet": p.total_bet,
+                    "balance": self.players[p.name].balance,
+                    "hand": [str(card) for card in p.hand] if (
+                                self.game.stage == "showdown" and not p.folded) else None,
+                    "is_dealer": i == self.game.dealer_index,
+                    "is_small_blind": i == (self.game.dealer_index + 1) % len(self.game.players),
+                    "is_big_blind": i == (self.game.dealer_index + 2) % len(self.game.players),
+                    "ready": self.active_connections[ws]["ready"] if ws in self.active_connections else False
+                }
+                for i, (ws, p) in enumerate([
+                    (next((ws for ws, data in self.active_connections.items() if data["player_id"] == p.name), None), p)
+                    for p in self.game.players
+                ])
+            ],
+            "community_cards": [str(card) for card in self.game.revealed_cards],
+            "pots": [{"amount": pot["amount"], "eligible_players": pot["eligible_players"]} for pot in self.game.pots]
         }
+
+        # Добавляем руку победителя в state["winner"]
+        if isinstance(winner_data["player"], list):
+            state["winner"]["hand"] = winner_data["hand"]
+        else:
+            winner_id = winner_data["player"]
+            winner_player = next((p for p in self.game.players if p.name == winner_id), None)
+            if winner_player:
+                state["winner"]["hand"] = [str(card) for card in winner_player.hand]
+
         disconnected = []
         for websocket in list(self.active_connections.keys()):
             player_id = self.active_connections[websocket]["player_id"]
-            # Пропускаем игроков, которых нет в текущей игре
             if self.game and player_id not in [p.name for p in self.game.players]:
                 continue
             try:
                 if websocket.client_state == WebSocketState.CONNECTED:
-                    if self.game:  # Если игра активна, отправляем полное состояние
-                        player_index = [p.name for p in self.game.players].index(player_id)
-                        game_state = self.game.get_game_state(player_index)
-                        game_state["players"] = [
-                            {
-                                "name": p.name,
-                                "folded": p.folded,
-                                "bet": p.current_bet,
-                                "balance": self.players[p.name].balance,
-                                "hand": [str(card) for card in p.hand] if self.game.stage == "showdown" else None,
-                                "is_dealer": i == self.game.dealer_index,
-                                "is_small_blind": i == (self.game.dealer_index + 1) % len(self.game.players),
-                                "is_big_blind": i == (self.game.dealer_index + 2) % len(self.game.players),
-                                "ready": self.active_connections[websocket]["ready"],
-                            }
-                            for i, p in enumerate(self.game.players)
-                        ]
-                        # Добавляем информацию о руке победителя в state["winner"]
-                        if isinstance(winner_data["player"], list):
-                            state["winner"]["hand"] = winner_data["hand"]
-                        else:
-                            winner_id = winner_data["player"]
-                            winner_player = next((p for p in self.game.players if p.name == winner_id), None)
-                            if winner_player:
-                                state["winner"]["hand"] = [str(card) for card in winner_player.hand]
-                        game_state.update(state)
-                        await websocket.send_text(json.dumps(game_state))
-                    else:  # Если игра не активна, отправляем только информацию о победителе
-                        await websocket.send_text(json.dumps(state))
+                    await websocket.send_text(json.dumps(state))
                 else:
                     disconnected.append(websocket)
             except (WebSocketDisconnect, RuntimeError) as e:
@@ -462,6 +469,15 @@ class ConnectionManager:
                 disconnected.append(websocket)
         for ws in disconnected:
             await self.disconnect(ws)
+
+        # Сбрасываем игру, но не отправляем broadcast_state
+        if self.game:
+            self.last_dealer_index = self.game.dealer_index
+        self.game = None  # Сбрасываем игру
+        self.waiting_players.clear()  # Очищаем ожидающих игроков
+        for ws in self.active_connections:
+            self.active_connections[ws]["ready"] = False  # Сбрасываем состояние готовности
+        # Не вызываем broadcast_state здесь, чтобы клиент оставался в состоянии showdown
 
         # Сбрасываем игру после объявления победителя
         if self.game:
