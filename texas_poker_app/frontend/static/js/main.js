@@ -267,7 +267,7 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log("WebSocket closed with code:", event.code, "reason:", event.reason);
             setTimeout(() => {
                 connectWebSocket();
-            }, 1000);
+            }, 3000);
         };
 
         ws.onerror = (error) => {

@@ -3,6 +3,7 @@ from ..models.game import PokerGame, Player
 from ..routes.auth import get_current_user
 from ..models.database import get_db
 import json
+from starlette.websockets import WebSocketState  # Добавляем импорт
 
 router = APIRouter()
 
@@ -12,23 +13,29 @@ class ConnectionManager:
         self.game = None
         self.players = {}  # {player_id: Player}
         self.last_dealer_index = -1  # Для отслеживания последнего дилера
+        self.waiting_players = set()  # Игроки, которые ждут окончания текущего раунда
 
     async def connect(self, websocket: WebSocket, player_id: str):
         await websocket.accept()
         if player_id not in self.players:
             self.players[player_id] = Player(player_id)
         self.active_connections[websocket] = {"player_id": player_id, "ready": False}
+        print(f"Player {player_id} connected")
+        if self.game and self.game.stage:  # Если игра уже идёт
+            self.waiting_players.add(player_id)
+            await websocket.send_text(json.dumps({"message": "Waiting for the current round to finish"}))
         await self.broadcast_state()
 
     async def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             player_id = self.active_connections[websocket]["player_id"]
-            del self.active_connections[websocket]
             print(f"Player {player_id} disconnected")
+            del self.active_connections[websocket]
 
             if not self.active_connections:
                 self.game = None
                 self.last_dealer_index = -1
+                self.waiting_players.clear()
                 print("No active connections, game reset")
                 return
 
@@ -77,8 +84,12 @@ class ConnectionManager:
             disconnected = []
             for websocket in list(self.active_connections.keys()):
                 try:
-                    await websocket.send_text(json.dumps(state))
-                except Exception as e:
+                    if websocket.client_state == WebSocketState.CONNECTED:  # Исправляем проверку состояния
+                        await websocket.send_text(json.dumps(state))
+                    else:
+                        print(f"Skipping send to {self.active_connections[websocket]['player_id']}: WebSocket not connected")
+                        disconnected.append(websocket)
+                except (WebSocketDisconnect, RuntimeError) as e:
                     print(f"Error sending state to {self.active_connections[websocket]['player_id']}: {e}")
                     disconnected.append(websocket)
             for ws in disconnected:
@@ -86,18 +97,26 @@ class ConnectionManager:
 
     async def start_game(self):
         player_ids = [data["player_id"] for data in self.active_connections.values()]
-        active_player_ids = [pid for pid in player_ids if self.players[pid].balance > 0]
+        # Фильтруем игроков: исключаем тех, у кого баланс 0 или кто в ожидании
+        active_player_ids = [pid for pid in player_ids if
+                             self.players[pid].balance > 0 and pid not in self.waiting_players]
         print(f"Player IDs in start_game: {player_ids}")
         print(f"Active player IDs after filtering: {active_player_ids}")
 
         if len(active_player_ids) < 2:
             print("Not enough players with balance to start the game")
+            disconnected = []
             for websocket in list(self.active_connections.keys()):
                 try:
-                    await websocket.send_text(json.dumps({"error": "Not enough players with balance to start the game"}))
-                except Exception as e:
+                    if websocket.client_state == WebSocketState.CONNECTED:
+                        await websocket.send_text(json.dumps({"error": "Not enough players with balance to start the game"}))
+                    else:
+                        disconnected.append(websocket)
+                except (WebSocketDisconnect, RuntimeError) as e:
                     print(f"Error sending error message to {self.active_connections[websocket]['player_id']}: {e}")
-                    await self.disconnect(websocket)
+                    disconnected.append(websocket)
+            for ws in disconnected:
+                await self.disconnect(ws)
             self.game = None
             return
 
@@ -117,12 +136,18 @@ class ConnectionManager:
             self.game.start_new_round()
         except ValueError as e:
             print(f"Error starting new round: {e}")
+            disconnected = []
             for websocket in list(self.active_connections.keys()):
                 try:
-                    await websocket.send_text(json.dumps({"error": str(e)}))
-                except Exception as e:
+                    if websocket.client_state == WebSocketState.CONNECTED:
+                        await websocket.send_text(json.dumps({"error": str(e)}))
+                    else:
+                        disconnected.append(websocket)
+                except (WebSocketDisconnect, RuntimeError) as e:
                     print(f"Error sending error message to {self.active_connections[websocket]['player_id']}: {e}")
-                    await self.disconnect(websocket)
+                    disconnected.append(websocket)
+            for ws in disconnected:
+                await self.disconnect(ws)
             self.game = None
             return
 
@@ -130,13 +155,17 @@ class ConnectionManager:
         disconnected = []
         for websocket, data in list(self.active_connections.items()):
             try:
-                if data["player_id"] in active_player_ids:
-                    game_state = self.game.get_game_state(active_player_ids.index(data["player_id"]))
-                    print(f"Sending to {data['player_id']}: {game_state}")
-                    await websocket.send_text(json.dumps(game_state))
+                if websocket.client_state == WebSocketState.CONNECTED:
+                    if data["player_id"] in active_player_ids:
+                        player_index = active_player_ids.index(data["player_id"])
+                        game_state = self.game.get_game_state(player_index)
+                        print(f"Sending to {data['player_id']}: {game_state}")
+                        await websocket.send_text(json.dumps(game_state))
+                    else:
+                        await websocket.send_text(json.dumps({"error": "You cannot participate because your balance is 0 or you are waiting"}))
                 else:
-                    await websocket.send_text(json.dumps({"error": "You cannot participate because your balance is 0"}))
-            except Exception as e:
+                    disconnected.append(websocket)
+            except (WebSocketDisconnect, RuntimeError) as e:
                 print(f"Error sending initial state to {data['player_id']}: {e}")
                 disconnected.append(websocket)
         for ws in disconnected:
@@ -153,6 +182,14 @@ class ConnectionManager:
             return
 
         player_id = self.active_connections[websocket]["player_id"]
+        if player_id in self.waiting_players:
+            await websocket.send_text(json.dumps({"error": "You are waiting for the current round to finish"}))
+            return
+
+        if player_id not in [p.name for p in self.game.players]:
+            await websocket.send_text(json.dumps({"error": "You are not in the current game"}))
+            return
+
         player_index = [p.name for p in self.game.players].index(player_id)
         game_state = self.game.get_game_state(player_index)
         print(
@@ -195,12 +232,16 @@ class ConnectionManager:
             await self.broadcast_game_state()
 
     async def handle_player_ready(self, websocket: WebSocket):
+        player_id = self.active_connections[websocket]["player_id"]
+        if player_id in self.waiting_players:
+            await websocket.send_text(json.dumps({"error": "You are waiting for the current round to finish"}))
+            return
+
         if not self.game:
             # Если игра не активна, просто устанавливаем ready
             await self.set_ready(websocket, True)
             return
 
-        player_id = self.active_connections[websocket]["player_id"]
         self.active_connections[websocket]["ready"] = True
         all_ready = all(data["ready"] for data in self.active_connections.values())
         if all_ready:
@@ -227,8 +268,11 @@ class ConnectionManager:
             disconnected = []
             for ws in list(self.active_connections.keys()):
                 try:
-                    await ws.send_text(json.dumps(state))
-                except Exception as e:
+                    if ws.client_state == WebSocketState.CONNECTED:
+                        await ws.send_text(json.dumps(state))
+                    else:
+                        disconnected.append(ws)
+                except (WebSocketDisconnect, RuntimeError) as e:
                     print(f"Error sending all_ready state to {self.active_connections[ws]['player_id']}: {e}")
                     disconnected.append(ws)
             for ws in self.active_connections:
@@ -240,14 +284,19 @@ class ConnectionManager:
             disconnected = []
             for ws in list(self.active_connections.keys()):
                 player_id = self.active_connections[ws]["player_id"]
+                if player_id not in [p.name for p in self.game.players]:
+                    continue
                 player_index = [p.name for p in self.game.players].index(player_id)
                 game_state = self.game.get_game_state(player_index)
                 for i, player in enumerate(game_state["players"]):
                     player["balance"] = self.players[player["name"]].balance
                     player["ready"] = list(self.active_connections.values())[i]["ready"]
                 try:
-                    await ws.send_text(json.dumps(game_state))
-                except Exception as e:
+                    if ws.client_state == WebSocketState.CONNECTED:
+                        await ws.send_text(json.dumps(game_state))
+                    else:
+                        disconnected.append(ws)
+                except (WebSocketDisconnect, RuntimeError) as e:
                     print(f"Error sending ready state to {self.active_connections[ws]['player_id']}: {e}")
                     disconnected.append(ws)
             for ws in disconnected:
@@ -310,22 +359,34 @@ class ConnectionManager:
         disconnected = []
         for websocket in list(self.active_connections.keys()):
             player_id = self.active_connections[websocket]["player_id"]
-            player_index = [p.name for p in self.game.players].index(player_id)
-            game_state = self.game.get_game_state(player_index)
-            for player in game_state["players"]:
-                player["balance"] = self.players[player["name"]].balance
-                if self.game.stage == "showdown":
-                    player["ready"] = self.active_connections[websocket]["ready"]
-            print(f"Sending game state to {player_id}: {game_state}")
+            if player_id in self.waiting_players:  # Пропускаем ожидающих игроков
+                continue
+            if player_id not in [p.name for p in self.game.players]:  # Пропускаем игроков, которых нет в текущей игре
+                continue
             try:
-                await websocket.send_text(json.dumps(game_state))
-            except Exception as e:
+                if websocket.client_state == WebSocketState.CONNECTED:
+                    player_index = [p.name for p in self.game.players].index(player_id)
+                    game_state = self.game.get_game_state(player_index)
+                    for player in game_state["players"]:
+                        player["balance"] = self.players[player["name"]].balance
+                        if self.game.stage == "showdown":
+                            player["ready"] = self.active_connections[websocket]["ready"]
+                    print(f"Sending game state to {player_id}: {game_state}")
+                    await websocket.send_text(json.dumps(game_state))
+                else:
+                    disconnected.append(websocket)
+            except (WebSocketDisconnect, RuntimeError) as e:
                 print(f"Error sending game state to {player_id}: {e}")
                 disconnected.append(websocket)
         for ws in disconnected:
             await self.disconnect(ws)
 
     async def broadcast_winner(self, winner_data, all_folded):
+        if not winner_data:  # Проверяем, что winner_data не None
+            print("No winner determined, broadcasting current state")
+            await self.broadcast_state()
+            return
+
         state = {
             "winner": winner_data,
             "all_folded": all_folded,
@@ -333,34 +394,53 @@ class ConnectionManager:
         disconnected = []
         for websocket in list(self.active_connections.keys()):
             player_id = self.active_connections[websocket]["player_id"]
-            player_index = [p.name for p in self.game.players].index(player_id)
-            game_state = self.game.get_game_state(player_index)
-            game_state["players"] = [
-                {
-                    "name": p.name,
-                    "folded": p.folded,
-                    "bet": p.current_bet,
-                    "balance": self.players[p.name].balance,
-                    "hand": [str(card) for card in p.hand] if self.game.stage == "showdown" else None,
-                    "is_dealer": i == self.game.dealer_index,
-                    "is_small_blind": i == (self.game.dealer_index + 1) % len(self.game.players),
-                    "is_big_blind": i == (self.game.dealer_index + 2) % len(self.game.players),
-                    "ready": self.active_connections[websocket]["ready"],
-                }
-                for i, p in enumerate(self.game.players)
-            ]
-            game_state.update(state)
+            # Пропускаем игроков, которых нет в текущей игре
+            if self.game and player_id not in [p.name for p in self.game.players]:
+                continue
             try:
-                await websocket.send_text(json.dumps(game_state))
-            except Exception as e:
+                if websocket.client_state == WebSocketState.CONNECTED:
+                    if self.game:  # Если игра активна, отправляем полное состояние
+                        player_index = [p.name for p in self.game.players].index(player_id)
+                        game_state = self.game.get_game_state(player_index)
+                        game_state["players"] = [
+                            {
+                                "name": p.name,
+                                "folded": p.folded,
+                                "bet": p.current_bet,
+                                "balance": self.players[p.name].balance,
+                                "hand": [str(card) for card in p.hand] if self.game.stage == "showdown" else None,
+                                "is_dealer": i == self.game.dealer_index,
+                                "is_small_blind": i == (self.game.dealer_index + 1) % len(self.game.players),
+                                "is_big_blind": i == (self.game.dealer_index + 2) % len(self.game.players),
+                                "ready": self.active_connections[websocket]["ready"],
+                            }
+                            for i, p in enumerate(self.game.players)
+                        ]
+                        # Добавляем информацию о руке победителя в state["winner"]
+                        if isinstance(winner_data["player"], list):
+                            state["winner"]["hand"] = winner_data["hand"]
+                        else:
+                            winner_id = winner_data["player"]
+                            winner_player = next((p for p in self.game.players if p.name == winner_id), None)
+                            if winner_player:
+                                state["winner"]["hand"] = [str(card) for card in winner_player.hand]
+                        game_state.update(state)
+                        await websocket.send_text(json.dumps(game_state))
+                    else:  # Если игра не активна, отправляем только информацию о победителе
+                        await websocket.send_text(json.dumps(state))
+                else:
+                    disconnected.append(websocket)
+            except (WebSocketDisconnect, RuntimeError) as e:
                 print(f"Error sending winner to {self.active_connections[websocket]['player_id']}: {e}")
                 disconnected.append(websocket)
         for ws in disconnected:
             await self.disconnect(ws)
 
         # Сбрасываем игру после объявления победителя
-        self.last_dealer_index = self.game.dealer_index
+        if self.game:
+            self.last_dealer_index = self.game.dealer_index
         self.game = None  # Сбрасываем игру
+        self.waiting_players.clear()  # Очищаем ожидающих игроков
         for ws in self.active_connections:
             self.active_connections[ws]["ready"] = False  # Сбрасываем состояние готовности
         await self.broadcast_state()  # Отправляем предигровое состояние всем клиентам
@@ -396,4 +476,4 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
         await manager.disconnect(websocket)
     except Exception as e:
         print(f"WebSocket error: {e}")
-        await websocket.close(code=1011)
+        await manager.disconnect(websocket)
