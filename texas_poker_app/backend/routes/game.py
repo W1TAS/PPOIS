@@ -247,23 +247,7 @@ class ConnectionManager:
                 if not self.game.all_in(player_index):
                     await websocket.send_text(json.dumps({"error": "Cannot go all-in"}))
                     return
-            previous_stage = self.game.stage
-            while True:
-                await self.check_and_advance_stage()
-                current_stage = self.game.stage
-                if current_stage == previous_stage:
-                    break
-                previous_stage = current_stage
-                # Если стадия сменилась на showdown, определяем победителя и завершаем раунд
-                if current_stage == "showdown":
-                    winner = self.game.determine_winner()
-                    await self.broadcast_game_state()
-                    # Сбрасываем игру после шоудауна
-                    self.last_dealer_index = self.game.dealer_index
-                    self.game = None
-                    self.waiting_players.clear()  # Очищаем список ожидающих игроков
-                    await self.broadcast_state()  # Отправляем предигровое состояние
-                    break
+            await self.check_and_advance_stage()
         except ValueError as e:
             await websocket.send_text(json.dumps({"error": str(e)}))
             await self.broadcast_game_state()
@@ -371,12 +355,16 @@ class ConnectionManager:
             max_bet = max(p["bet"] for p in players_in_game)
             all_bets_settled = all(p["bet"] == max_bet or self.players[p["name"]].balance == 0 for p in players_in_game)
             if all_bets_settled:
+                # Продвигаем стадии до showdown
                 while self.game.stage != "showdown" and self.game.advance_stage():
                     new_game_state = self.game.get_game_state(0)
                     print(f"Automatically advancing to next stage: {new_game_state['stage']}")
-                winner = self.game.get_winner()
-                print(f"Winner determined: {winner}")
-                await self.broadcast_winner(winner, all_folded)
+                if self.game.stage == "showdown":
+                    winner = self.game.get_winner()
+                    print(f"Winner determined: {winner}")
+                    await self.broadcast_winner(winner, all_folded)
+                else:
+                    await self.broadcast_game_state()
                 return
             await self.broadcast_game_state()
             return
@@ -436,6 +424,9 @@ class ConnectionManager:
             await self.broadcast_state()
             return
 
+        # Сохраняем dealer_index перед сбросом игры
+        dealer_index = self.game.dealer_index if self.game else self.last_dealer_index
+
         state = {
             "stage": "showdown",  # Явно указываем стадию
             "winner": winner_data,
@@ -448,10 +439,10 @@ class ConnectionManager:
                     "total_bet": p.total_bet,
                     "balance": self.players[p.name].balance,
                     "hand": [str(card) for card in p.hand] if (
-                                self.game.stage == "showdown" and not p.folded) else None,
-                    "is_dealer": i == self.game.dealer_index,
-                    "is_small_blind": i == (self.game.dealer_index + 1) % len(self.game.players),
-                    "is_big_blind": i == (self.game.dealer_index + 2) % len(self.game.players),
+                            self.game and self.game.stage == "showdown" and not p.folded) else None,
+                    "is_dealer": i == dealer_index,
+                    "is_small_blind": i == (dealer_index + 1) % len(self.game.players) if self.game else False,
+                    "is_big_blind": i == (dealer_index + 2) % len(self.game.players) if self.game else False,
                     "ready": self.active_connections[ws]["ready"] if ws in self.active_connections else False
                 }
                 for i, (ws, p) in enumerate([
@@ -459,8 +450,9 @@ class ConnectionManager:
                     for p in self.game.players
                 ])
             ],
-            "community_cards": [str(card) for card in self.game.revealed_cards],
-            "pots": [{"amount": pot["amount"], "eligible_players": pot["eligible_players"]} for pot in self.game.pots]
+            "community_cards": [str(card) for card in self.game.revealed_cards] if self.game else [],
+            "pots": [{"amount": pot["amount"], "eligible_players": pot["eligible_players"]} for pot in
+                     self.game.pots] if self.game else []
         }
 
         # Добавляем руку победителя в state["winner"]
@@ -468,7 +460,7 @@ class ConnectionManager:
             state["winner"]["hand"] = winner_data["hand"]
         else:
             winner_id = winner_data["player"]
-            winner_player = next((p for p in self.game.players if p.name == winner_id), None)
+            winner_player = next((p for p in self.game.players if p.name == winner_id), None) if self.game else None
             if winner_player:
                 state["winner"]["hand"] = [str(card) for card in winner_player.hand]
 
@@ -488,16 +480,7 @@ class ConnectionManager:
         for ws in disconnected:
             await self.disconnect(ws)
 
-        # Сбрасываем игру, но не отправляем broadcast_state
-        if self.game:
-            self.last_dealer_index = self.game.dealer_index
-        self.game = None  # Сбрасываем игру
-        self.waiting_players.clear()  # Очищаем ожидающих игроков
-        for ws in self.active_connections:
-            self.active_connections[ws]["ready"] = False  # Сбрасываем состояние готовности
-        # Не вызываем broadcast_state здесь, чтобы клиент оставался в состоянии showdown
-
-        # Сбрасываем игру после объявления победителя
+        # Сбрасываем игру один раз
         if self.game:
             self.last_dealer_index = self.game.dealer_index
         self.game = None  # Сбрасываем игру

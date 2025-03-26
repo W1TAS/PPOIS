@@ -97,20 +97,20 @@ class PokerGame:
         self.deck.shuffle()
         self.community_cards = [self.deck.deal_card() for _ in range(5)]
         self.revealed_cards = []
-        self.pots = [{"amount": 0, "eligible_players": [p.name for p in self.players]}]
+        self.pots = []  # Инициализируем пустой список банков
         self.current_bet = 0
         self.stage = "preflop"
         self.actions_taken = 0
 
         # Сбрасываем ставки игроков
         for player in self.players:
-            player.reset()  # Используем новый метод reset вместо отдельных сбросов
+            player.reset()
 
         # Перемещаем дилера
         self.dealer_index = (self.dealer_index + 1) % len(self.players) if self.dealer_index >= 0 else 0
-        print(f"New dealer_index: {self.dealer_index}")  # Лог для отладки
+        print(f"New dealer_index: {self.dealer_index}")
 
-        # Определяем Small Blind и Big Blind на основе dealer_index
+        # Определяем Small Blind и Big Blind
         small_blind_index = (self.dealer_index + 1) % len(self.players)
         big_blind_index = (self.dealer_index + 2) % len(self.players)
 
@@ -146,7 +146,7 @@ class PokerGame:
         # Раздаём карты
         for player in self.players:
             cards = [self.deck.deal_card(), self.deck.deal_card()]
-            player.receive_cards(cards)  # Используем receive_cards вместо отдельных receive_card
+            player.receive_cards(cards)
 
         # Обновляем self.current_bet после блайндов
         self.current_bet = max(p.current_bet for p in self.players)
@@ -283,51 +283,62 @@ class PokerGame:
 
     def update_pots(self, amount, player):
         print(f"Updating pots for player {player.name}, amount={amount}, current_bet={player.current_bet}")
-        # Убедимся, что у нас есть хотя бы один банк
-        if not self.pots:
-            print("No pots exist, creating a new one")
-            self.pots = [{"amount": 0, "eligible_players": [p.name for p in self.players if not p.folded]}]
 
-        # Вычисляем, сколько нужно добавить
+        # Добавляем ставку игрока
         additional_bet = amount
         if additional_bet <= 0:
             print(f"No additional bet needed for player {player.name}, returning")
             return
 
-        # Удаляем проверку баланса, так как она уже выполнена в place_bet
-        # print(f"Checking balance: additional_bet={additional_bet}, player.balance={player.balance}")
-        # if additional_bet > player.balance:
-        #     print(f"Player {player.name} does not have enough chips to bet {additional_bet}")
-        #     raise ValueError(f"Player {player.name} does not have enough chips to bet {additional_bet}")
+        # Собираем всех игроков (включая тех, кто сбросил карты, так как их вклад уже в банке)
+        all_players = [(p.name, p.total_bet, p.folded) for p in self.players]
+        all_players.sort(key=lambda x: x[1])  # Сортируем по total_bet
+        print(f"All players sorted by total_bet: {all_players}")
 
-        # Находим текущую максимальную ставку среди всех игроков (для отладки)
-        print("Calculating max_bet")
-        try:
-            max_bet = max(p.current_bet for p in self.players)
-        except Exception as e:
-            print(f"Error calculating max_bet: {e}")
-            raise
-        print(f"max_bet={max_bet}")
+        # Создаём новые банки
+        new_pots = []
+        previous_bet = 0
+        eligible = [p.name for p in self.players]  # Изначально все игроки
 
-        # Определяем активных игроков
-        print("Determining active players")
-        active_players = [p.name for p in self.players if not p.folded]
-        print(f"Active players: {active_players}")
-        if not active_players:
-            print("No active players, returning")
-            return
+        for player_name, total_bet, folded in all_players:
+            if total_bet <= previous_bet:
+                continue
 
-        # Проверяем, нужно ли создавать новый банк
-        print(f"Current pots: {self.pots}")
-        if not self.pots or self.pots[-1]["eligible_players"] != active_players:
-            print("Creating new pot due to change in eligible players")
-            self.pots.append({"amount": 0, "eligible_players": active_players})
+            # Обновляем eligible_players: исключаем игроков, чей total_bet меньше текущего уровня
+            eligible = [p for p in eligible if
+                        self.players[[p2.name for p2 in self.players].index(p)].total_bet >= total_bet]
 
-        # Добавляем ставку к последнему банку
-        print(f"Adding {additional_bet} to last pot")
-        self.pots[-1]["amount"] += additional_bet
+            # Рассчитываем сумму для текущего банка на основе реальных ставок
+            amount_for_pot = 0
+            pot_eligible_players = []  # Игроки, которые реально внесли вклад в этот банк
+            for p_name in eligible:
+                player_obj = self.players[[p2.name for p2 in self.players].index(p_name)]
+                # Учитываем только реальный вклад игрока на этом уровне
+                contribution = min(total_bet, player_obj.total_bet) - min(previous_bet, player_obj.total_bet)
+                if contribution > 0:
+                    amount_for_pot += contribution
+                    pot_eligible_players.append(p_name)
 
-        print(f"Updated pots: {self.pots}, max_bet: {max_bet}, current_bet: {self.current_bet}")
+            if amount_for_pot > 0:
+                new_pots.append({"amount": amount_for_pot, "eligible_players": pot_eligible_players})
+                print(f"Created new pot: amount={amount_for_pot}, eligible_players={pot_eligible_players}")
+
+            previous_bet = total_bet
+
+        # Обновляем self.pots
+        self.pots = new_pots
+
+        # Удаляем банки с нулевой суммой
+        self.pots = [pot for pot in self.pots if pot["amount"] > 0]
+        if not self.pots:
+            self.pots = [{"amount": 0, "eligible_players": [p.name for p in self.players]}]
+
+        # Обновляем eligible_players, исключая тех, кто сбросил карты
+        for pot in self.pots:
+            pot["eligible_players"] = [p for p in pot["eligible_players"] if
+                                       not self.players[[p2.name for p2 in self.players].index(p)].folded]
+
+        print(f"Updated pots: {self.pots}")
 
     def get_game_state(self, player_index):
         player = self.players[player_index]
@@ -413,43 +424,159 @@ class PokerGame:
     def get_winner(self):
         print(f"Calling get_winner for stage: {self.stage}")
         players_in_game = [p for p in self.players if not p.folded]
+
+        # Если остался только один игрок (например, из-за фолда)
         if len(players_in_game) == 1:
             winner = players_in_game[0]
-            total_winnings = sum(pot["amount"] for pot in self.pots if winner.name in pot["eligible_players"])
-            self.players[self.players.index(winner)].balance += total_winnings
+            total_net_winnings = 0
+            for pot in self.pots:
+                if pot["amount"] == 0:
+                    continue
+                # Игроки, которые имеют право на этот банк (до фолда)
+                eligible_players = [p for p in self.players if p.name in pot["eligible_players"]]
+                if not eligible_players:
+                    continue
+
+                # Рассчитываем вклад каждого игрока в этот банк
+                contributions = {}
+                previous_pots_amount = sum(prev_pot["amount"] for prev_pot in self.pots[:self.pots.index(pot)])
+                for p in self.players:
+                    contribution = min(pot["amount"], max(0, min(p.total_bet, previous_pots_amount + pot[
+                        "amount"]) - previous_pots_amount))
+                    contributions[p.name] = contribution
+
+                # Если в банке остался только один участник, который не сбросил карты
+                eligible_active_players = [p for p in eligible_players if not p.folded]
+                if len(eligible_active_players) == 1 and eligible_active_players[0] == winner:
+                    winner_contribution = contributions[winner.name]
+                    net_winnings_for_pot = pot["amount"] - winner_contribution
+                    total_net_winnings += net_winnings_for_pot
+                    self.players[self.players.index(winner)].balance += pot["amount"]
+                    print(
+                        f"Winner {winner.name} receives from pot (single eligible player): pot amount={pot['amount']}, contribution={winner_contribution}, net winnings={net_winnings_for_pot}, total pot added={pot['amount']}, new balance: {self.players[self.players.index(winner)].balance}"
+                    )
+                else:
+                    # Победитель получает весь банк
+                    winner_contribution = contributions[winner.name]
+                    net_winnings_for_pot = pot["amount"] - winner_contribution
+                    total_net_winnings += net_winnings_for_pot
+                    self.players[self.players.index(winner)].balance += pot["amount"]
+                    print(
+                        f"Winner {winner.name} receives from pot: pot amount={pot['amount']}, contribution={winner_contribution}, net winnings={net_winnings_for_pot}, total pot added={pot['amount']}, new balance: {self.players[self.players.index(winner)].balance}"
+                    )
+
+                # Возвращаем сайд-пот игрокам, которые не участвуют в раздаче
+                for p in self.players:
+                    if p.folded and p.name in pot["eligible_players"]:
+                        player_contribution = contributions[p.name]
+                        if player_contribution > 0:
+                            self.players[self.players.index(p)].balance += player_contribution
+                            print(
+                                f"Returning side pot to {p.name}: amount={player_contribution}, new balance: {self.players[self.players.index(p)].balance}"
+                            )
+
             print(
-                f"Winner (single player): {winner.name}, winnings: {total_winnings}, new balance: {self.players[self.players.index(winner)].balance}")
-            result = {"player": winner.name, "hand": [str(card) for card in winner.hand], "winnings": total_winnings}
-            # Сбрасываем банк
+                f"Winner (single player): {winner.name}, total net winnings: {total_net_winnings}, final balance: {self.players[self.players.index(winner)].balance}"
+            )
+            result = {"player": winner.name, "hand": [str(card) for card in winner.hand],
+                      "winnings": total_net_winnings}
             self.pots = [{"amount": 0, "eligible_players": [p.name for p in self.players]}]
             return result
 
-        best_hand = None
-        winners = []
-        for player in players_in_game:
-            hand = player.hand + self.revealed_cards
-            hand_value = self.get_best_hand(player)
-            print(f"Evaluating hand for {player.name}: {hand}, hand_value: {hand_value}")
-            if best_hand is None or hand_value > best_hand:
-                best_hand = hand_value
-                winners = [player]
-            elif hand_value == best_hand:
-                winners.append(player)
+        # Шоудаун с несколькими игроками
+        winners_by_pot = []
+        total_net_winnings_by_player = {p.name: 0 for p in
+                                        self.players}  # Отслеживаем чистый выигрыш для итогового результата
 
-        total_winnings = sum(
-            pot["amount"] for pot in self.pots if any(w.name in pot["eligible_players"] for w in winners))
-        winnings_per_player = total_winnings // len(winners)
-        for winner in winners:
-            self.players[self.players.index(winner)].balance += winnings_per_player
-            print(
-                f"Adding winnings to {winner.name}: {winnings_per_player}, new balance: {self.players[self.players.index(winner)].balance}")
-        print(
-            f"Winners: {[w.name for w in winners]}, total winnings: {total_winnings}, per player: {winnings_per_player}")
+        for pot in self.pots:
+            if pot["amount"] == 0:
+                continue
+            # Учитываем только игроков, которые не сбросили карты и участвуют в этом банке
+            eligible_players = [p for p in self.players if p.name in pot["eligible_players"] and not p.folded]
+            if not eligible_players:
+                # Если нет игроков, которые не сбросили карты, возвращаем банк тем, кто внёс вклад
+                contributions = {}
+                previous_pots_amount = sum(prev_pot["amount"] for prev_pot in self.pots[:self.pots.index(pot)])
+                for p in self.players:
+                    contribution = min(pot["amount"], max(0, min(p.total_bet, previous_pots_amount + pot[
+                        "amount"]) - previous_pots_amount))
+                    contributions[p.name] = contribution
+                    if contribution > 0 and p.name in pot["eligible_players"]:
+                        self.players[self.players.index(p)].balance += contribution
+                        print(
+                            f"Returning pot to {p.name} (no eligible players): amount={contribution}, new balance: {self.players[self.players.index(p)].balance}"
+                        )
+                continue
+
+            # Если в банке остался только один участник, который не сбросил карты
+            if len(eligible_players) == 1:
+                winner = eligible_players[0]
+                contributions = {}
+                previous_pots_amount = sum(prev_pot["amount"] for prev_pot in self.pots[:self.pots.index(pot)])
+                for p in self.players:
+                    contribution = min(pot["amount"], max(0, min(p.total_bet, previous_pots_amount + pot[
+                        "amount"]) - previous_pots_amount))
+                    contributions[p.name] = contribution
+
+                winner_contribution = contributions[winner.name]
+                net_winnings_for_pot = pot["amount"] - winner_contribution
+                self.players[self.players.index(winner)].balance += pot["amount"]
+                total_net_winnings_by_player[winner.name] += net_winnings_for_pot
+                print(
+                    f"Returning pot to {winner.name} (single eligible player): pot amount={pot['amount']}, contribution={winner_contribution}, net winnings={net_winnings_for_pot}, total pot added={pot['amount']}, new balance: {self.players[self.players.index(winner)].balance}"
+                )
+                winners_by_pot.append({
+                    "pot_amount": pot["amount"],
+                    "winners": [winner.name],
+                    "winnings_per_player": pot["amount"]
+                })
+                continue
+
+            # Находим победителей для этого банка
+            best_hand = None
+            pot_winners = []
+            for player in eligible_players:
+                hand = player.hand + self.revealed_cards
+                hand_value = self.get_best_hand(player)
+                print(f"Evaluating hand for {player.name}: {hand}, hand_value: {hand_value}")
+                if best_hand is None or hand_value > best_hand:
+                    best_hand = hand_value
+                    pot_winners = [player]
+                elif hand_value == best_hand:
+                    pot_winners.append(player)
+
+            # Рассчитываем вклад каждого игрока в этот банк
+            contributions = {}
+            previous_pots_amount = sum(prev_pot["amount"] for prev_pot in self.pots[:self.pots.index(pot)])
+            for p in self.players:
+                contribution = min(pot["amount"], max(0, min(p.total_bet, previous_pots_amount + pot[
+                    "amount"]) - previous_pots_amount))
+                contributions[p.name] = contribution
+
+            # Делим банк между победителями
+            winnings_per_player = pot["amount"] // len(pot_winners)
+            for winner in pot_winners:
+                winner_contribution = contributions[winner.name]
+                net_winnings_for_pot = winnings_per_player - winner_contribution
+                self.players[self.players.index(winner)].balance += winnings_per_player  # Начисляем весь банк
+                total_net_winnings_by_player[
+                    winner.name] += net_winnings_for_pot  # Чистый выигрыш для итогового результата
+                print(
+                    f"Adding winnings to {winner.name}: pot amount={pot['amount']}, contribution={winner_contribution}, net winnings={net_winnings_for_pot}, total pot added={winnings_per_player}, new balance: {self.players[self.players.index(winner)].balance}"
+                )
+            winners_by_pot.append({
+                "pot_amount": pot["amount"],
+                "winners": [w.name for w in pot_winners],
+                "winnings_per_player": winnings_per_player
+            })
+
+        # Формируем результат
+        total_net_winnings = sum(total_net_winnings_by_player.values())
         result = {
-            "player": [w.name for w in winners],
-            "hand": [str(card) for card in winners[0].hand] if winners else [],
-            "winnings": total_winnings
+            "player": winners_by_pot[0]["winners"] if winners_by_pot else [],
+            "hand": [str(card) for card in pot_winners[0].hand] if winners_by_pot and pot_winners else [],
+            "winnings": total_net_winnings
         }
-        # Сбрасываем банк
+        print(f"Winners by pot: {winners_by_pot}, total net winnings: {total_net_winnings}")
         self.pots = [{"amount": 0, "eligible_players": [p.name for p in self.players]}]
         return result
