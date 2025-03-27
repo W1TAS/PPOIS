@@ -79,12 +79,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function connectWebSocket() {
-        ws = new WebSocket(`ws://127.0.0.1:8000/game/ws?token=${token}`);
+        // Определяем протокол (ws или wss) и хост автоматически
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const host = window.location.host; // Например, "texas-poker-app.onrender.com" или "localhost:8000"
+        const wsUrl = `${protocol}//${host}/game/ws?token=${token}`;
+        console.log("Connecting to WebSocket at:", wsUrl);
+        ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
             console.log("WebSocket connected");
         };
 
+        // Остальной код функции остаётся без изменений
         ws.onmessage = function(event) {
             try {
                 if (!event.data) {
