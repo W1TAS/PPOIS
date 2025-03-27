@@ -24,6 +24,13 @@ document.addEventListener("DOMContentLoaded", () => {
     let lastCommunityCards = [];
     let lastStage = null;
     let isWaiting = false; // Флаг для состояния ожидания
+    let cardTurnSound = new Audio('/static/sounds/card_turn.mp3');
+    let lastVisibleCardCount = 0; // Для отслеживания количества видимых карт
+    let oneChipSound = new Audio('/static/sounds/one_chip.mp3');
+    let smallBetSound = new Audio('/static/sounds/small_bet.mp3');
+    let normalBetSound = new Audio('/static/sounds/normal_bet.mp3');
+    let bigAllInSound = new Audio('/static/sounds/big_all_in.mp3');
+    let previousBets = {};
 
     function showGame() {
         console.log("Switching to game view");
@@ -169,13 +176,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (data.all_ready) {
                     console.log("All players ready, resetting game state");
-                    isWaiting = false; // Сбрасываем флаг ожидания
+                    isWaiting = false;
                     gameEnded = false;
-                    currentWinner = null; // Сбрасываем победителя
+                    currentWinner = null;
                     currentPlayer = null;
-                    playerHands = {}; // Сбрасываем руки игроков
-                    lastCommunityCards = []; // Сбрасываем общие карты
+                    playerHands = {};
+                    lastCommunityCards = [];
                     lastStage = null;
+                    lastVisibleCardCount = 0; // Сбрасываем количество видимых карт
                     document.getElementById("table-center").style.display = "none";
                     document.getElementById("player-info").style.display = "none";
                     document.getElementById("action-bar").style.display = "none";
@@ -325,15 +333,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function normalizeCardName(card) {
         if (!card) return "card_back_black";
+
         const suitMap = {
             '♠': 'spades',
             '♥': 'hearts',
             '♦': 'diamonds',
             '♣': 'clubs'
         };
+
+        const valueMap = {
+            'A': 'ace',
+            'K': 'king',
+            'Q': 'queen',
+            'J': 'jack'
+        };
+
         const value = card.replace(/[♠♥♦♣]/g, '');
         const suit = card.match(/[♠♥♦♣]/)?.[0] || 'spades';
-        return `${suitMap[suit]}_${value.toLowerCase()}`;
+
+        // Преобразуем значение карты
+        const normalizedValue = valueMap[value] || value.toLowerCase();
+
+        return `${normalizedValue}_of_${suitMap[suit]}`;
     }
 
     function updatePlayerList(players, currentUsername, winnerName = null, stage = null) {
@@ -422,6 +443,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             chipsImg.alt = "Chips";
             betLabel.appendChild(chipsImg);
+
             if (totalBet > 0) {
                 betLabel.style.display = "block";
                 betLabel.classList.add("visible");
@@ -430,10 +452,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     betLabel.classList.add("bet-low");
                 } else if (totalBet <= 200) {
                     betLabel.classList.add("bet-medium");
-                } else if (totalBet <= 500){
+                } else if (totalBet <= 500) {
                     betLabel.classList.add("bet-high");
                 } else {
-                    betLabel.classList.add("bet-very-high")
+                    betLabel.classList.add("bet-very-high");
                 }
 
                 const centerXPercent = (centerX / containerWidth) * 100;
@@ -457,6 +479,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 betLabel.style.top = `${betYAbsolutePercent}%`;
 
                 console.log(`Player ${playerId}: totalBet=${totalBet}, position=(${xPercent}%, ${yPercent}%), bet position=(${betXAbsolutePercent}%, ${betYAbsolutePercent}%)`);
+
+                // Проигрываем звук, если ставка изменилась
+                const previousBet = previousBets[playerId] || 0;
+                let soundToPlay;
+
+                    if (totalBet - previousBet <= 20) {
+                        soundToPlay = oneChipSound;
+                    } else if (totalBet - previousBet < 200) {
+                        soundToPlay = smallBetSound;
+                    } else if (totalBet - previousBet < 500) {
+                        soundToPlay = normalBetSound;
+                    } else {
+                        soundToPlay = bigAllInSound
+                    }
+
+                soundToPlay.play().catch(error => {
+                    console.error("Error playing bet sound:", error);
+                });
+
+                previousBets[playerId] = totalBet; // Обновляем previousBets только если totalBet > 0
 
                 playerCircle.appendChild(betLabel);
             } else {
@@ -590,6 +632,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const visibleCards = cards || [];
         console.log("Community cards received:", visibleCards);
+
+        // Подсчитываем количество новых видимых карт
+        const newVisibleCardCount = visibleCards.filter(card => card).length;
+
+        // Проигрываем звук, если количество видимых карт увеличилось
+        if (newVisibleCardCount > lastVisibleCardCount) {
+            const cardsRevealed = newVisibleCardCount - lastVisibleCardCount;
+            for (let i = 0; i < cardsRevealed; i++) {
+                cardTurnSound.play().catch(error => {
+                    console.error("Error playing card turn sound:", error);
+                });
+            }
+        }
+        lastVisibleCardCount = newVisibleCardCount;
+
         visibleCards.forEach((card, index) => {
             if (card) {
                 const normalizedCard = normalizeCardName(card);

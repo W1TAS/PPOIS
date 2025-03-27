@@ -52,7 +52,7 @@ htmlcov/
 .tox/
 .nox/
 
-frontend/static/sounds/
+
 
 # Документация (если генерируется)
 docs/_build/
