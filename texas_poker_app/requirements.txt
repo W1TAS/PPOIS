@@ -5,3 +5,4 @@ websockets
 python-jose[cryptography]
 passlib[bcrypt]
 sqlalchemy
+python-dotenv==1.0.1
