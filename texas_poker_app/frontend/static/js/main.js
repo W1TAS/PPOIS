@@ -396,7 +396,32 @@ document.addEventListener("DOMContentLoaded", () => {
             betLabel.className = "player-bet";
             betLabel.setAttribute("data-player-id", playerId);
             const totalBet = player.total_bet || 0;
-            betLabel.textContent = totalBet;
+            betLabel.innerHTML = ""; // Очищаем содержимое
+
+            // Добавляем текст ставки
+            const betText = document.createElement("span");
+            betText.textContent = totalBet;
+            betLabel.appendChild(betText);
+
+            // Добавляем картинку chips.png
+            const chipsImg = document.createElement("img");
+            // Выбираем картинку в зависимости от размера ставки
+            if (totalBet <= 50) {
+                chipsImg.src = "/static/images/chips1.png";
+                chipsImg.className = "bet-chips bet-chips-1";
+            } else if (totalBet <= 200) {
+                chipsImg.src = "/static/images/chips2.png";
+                chipsImg.className = "bet-chips bet-chips-2";
+            } else if (totalBet <= 500) {
+                chipsImg.src = "/static/images/chips3.png";
+                chipsImg.className = "bet-chips bet-chips-3";
+            } else {
+                chipsImg.src = "/static/images/chips4.png";
+                chipsImg.className = "bet-chips bet-chips-4";
+            }
+
+            chipsImg.alt = "Chips";
+            betLabel.appendChild(chipsImg);
             if (totalBet > 0) {
                 betLabel.style.display = "block";
                 betLabel.classList.add("visible");
@@ -412,16 +437,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 const centerXPercent = (centerX / containerWidth) * 100;
                 const centerYPercent = (centerY / containerHeight) * 100;
 
-                const distanceToCenterX = centerXPercent - xPercent;
-                const distanceToCenterY = centerYPercent - yPercent;
-                const distanceToCenter = Math.sqrt(distanceToCenterX ** 2 + distanceToCenterY ** 2);
+                const betOffsetPercent = 8; // Базовое смещение в процентах
 
-                const directionX = distanceToCenterX / distanceToCenter;
-                const directionY = distanceToCenterY / distanceToCenter;
+                // Определяем, находится ли игрок выше или ниже центра
+                const isAboveCenter = yPercent < centerYPercent;
+                const isLeftOfCenter = xPercent < centerXPercent;
 
-                const betOffsetPercent = 8;
-                const betXOffsetPercent = directionX * betOffsetPercent;
-                const betYOffsetPercent = directionY * betOffsetPercent;
+                // Смещение по Y: для верхних игроков — вниз, для нижних — вверх
+                const betYOffsetPercent = isAboveCenter ? betOffsetPercent : -betOffsetPercent;
+                // Смещение по X: для левых игроков — вправо, для правых — влево
+                const betXOffsetPercent = isLeftOfCenter ? betOffsetPercent : -betOffsetPercent;
 
                 const betXAbsolutePercent = xPercent + betXOffsetPercent;
                 const betYAbsolutePercent = yPercent + betYOffsetPercent;

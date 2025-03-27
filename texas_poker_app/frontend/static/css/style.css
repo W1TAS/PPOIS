@@ -315,11 +315,34 @@ button:disabled {
     font-size: 14px;
     transform: translate(-50%, -50%);
     pointer-events: none;
-    display: none;
     z-index: 10;
     opacity: 0;
     transition: opacity 0.3s ease;
     white-space: nowrap;
+    display: flex; /* Добавляем */
+    align-items: center; /* Добавляем */
+    gap: 5px;
+}
+
+.bet-chips {
+    object-fit: contain;
+}
+
+.bet-chips-1 {
+    width: 20px;
+    height: 20px;
+}
+.bet-chips-2 {
+    width: 20px;
+    height: 20px;
+}
+.bet-chips-3 {
+    width: 30px;
+    height: 30px;
+}
+.bet-chips-4 {
+    width: 50px;
+    height: 50px;
 }
 
 .player-bet.visible {
