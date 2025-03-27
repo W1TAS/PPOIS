@@ -430,8 +430,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     betLabel.classList.add("bet-low");
                 } else if (totalBet <= 200) {
                     betLabel.classList.add("bet-medium");
-                } else {
+                } else if (totalBet <= 500){
                     betLabel.classList.add("bet-high");
+                } else {
+                    betLabel.classList.add("bet-very-high")
                 }
 
                 const centerXPercent = (centerX / containerWidth) * 100;
