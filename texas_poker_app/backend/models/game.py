@@ -354,7 +354,8 @@ class PokerGame:
                     "name": p.name,
                     "folded": p.folded,
                     "bet": p.current_bet,
-                    "total_bet": p.total_bet,  # Убедимся, что это поле есть
+                    "total_bet": p.total_bet,
+                    "balance": p.balance,
                     "is_dealer": i == self.dealer_index,
                     "is_small_blind": i == (self.dealer_index + 1) % len(self.players),
                     "is_big_blind": i == (self.dealer_index + 2) % len(self.players),
