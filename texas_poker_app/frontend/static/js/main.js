@@ -194,8 +194,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     playerHands = {};
                     lastCommunityCards = [];
                     lastStage = null;
-                    lastVisibleCardCount = 0;
-                    isNewGame = true; // Сбрасываем флаг для новой игры
+                    lastVisibleCardCount = 0; // Сбрасываем счётчик видимых карт
+                    isNewGame = true;
                     document.getElementById("table-center").style.display = "none";
                     document.getElementById("player-info").style.display = "none";
                     document.getElementById("action-bar").style.display = "none";
@@ -204,6 +204,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     const playerCircle = document.getElementById("player-circle");
                     const oldBetLabels = playerCircle.querySelectorAll(".player-bet");
                     oldBetLabels.forEach(label => label.remove());
+                    // Очищаем общие карты
+                    const communityCardsContainer = document.getElementById("community-cards");
+                    if (communityCardsContainer) {
+                        communityCardsContainer.innerHTML = "";
+                    }
                     if (data.players) {
                         data.players.forEach(player => {
                             playerBalances[player.player_id] = player.balance !== undefined ? player.balance : (playerBalances[player.player_id] || 0);
@@ -222,6 +227,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (data.stage === "preflop" && lastStage !== "preflop") {
                         console.log("New game started (preflop), setting isNewGame to true");
                         isNewGame = true;
+                        lastVisibleCardCount = 0; // Сбрасываем счётчик видимых карт
+                        const communityCardsContainer = document.getElementById("community-cards");
+                        if (communityCardsContainer) {
+                            communityCardsContainer.innerHTML = ""; // Очищаем общие карты
+                        }
                     }
 
                     if (data.players.some(p => p.name === username)) {
@@ -703,64 +713,85 @@ document.addEventListener("DOMContentLoaded", () => {
 }
 
     function updateCommunityCards(cards, stage) {
-        const container = document.getElementById("community-cards");
-        if (!container) {
-            console.error("Element #community-cards not found in DOM");
-            return;
-        }
-        container.innerHTML = "";
+    const container = document.getElementById("community-cards");
+    if (!container) {
+        console.error("Element #community-cards not found in DOM");
+        return;
+    }
+
+    // Сохраняем текущее состояние контейнера, чтобы не перерисовывать уже открытые карты
+    const existingCards = container.children.length;
+    if (!existingCards) {
+        // Если контейнер пуст, создаём 5 слотов для карт
         for (let i = 0; i < 5; i++) {
-            const img = document.createElement("img");
-            img.src = "/static/images/card_back_black.png";
-            container.appendChild(img);
-        }
+            const cardWrapper = document.createElement("div");
+            cardWrapper.className = "card-wrapper";
+            cardWrapper.setAttribute("data-card-id", `${i}`);
 
-        const visibleCards = cards || [];
-        console.log("Community cards received:", visibleCards);
+            const cardInner = document.createElement("div");
+            cardInner.className = "card-inner";
 
-        // Подсчитываем количество новых видимых карт
-        const newVisibleCardCount = visibleCards.filter(card => card).length;
+            const cardFront = document.createElement("div");
+            cardFront.className = "card-front";
+            const frontImg = document.createElement("img");
+            frontImg.src = "/static/images/card_back_black.png"; // По умолчанию рубашка
+            frontImg.alt = "Card back";
+            cardFront.appendChild(frontImg);
 
-        // Проигрываем звук, если количество видимых карт увеличилось
-        if (newVisibleCardCount > lastVisibleCardCount) {
-            const cardsRevealed = newVisibleCardCount - lastVisibleCardCount;
-            for (let i = 0; i < cardsRevealed; i++) {
-                cardTurnSound.play().catch(error => {
-                    console.error("Error playing card turn sound:", error);
-                });
-            }
-        }
-        lastVisibleCardCount = newVisibleCardCount;
+            const cardBack = document.createElement("div");
+            cardBack.className = "card-back";
+            const backImg = document.createElement("img");
+            backImg.src = "/static/images/card_back_black.png";
+            backImg.alt = "Card back";
+            cardBack.appendChild(backImg);
 
-        visibleCards.forEach((card, index) => {
-            if (card) {
-                const normalizedCard = normalizeCardName(card);
-                const img = container.children[index];
-                img.src = `/static/images/${normalizedCard}.png`;
-                img.onerror = () => console.error(`Failed to load community card: ${normalizedCard}.png`);
-            }
-        });
-
-        if (stage === "Flop" && visibleCards.length >= 3) {
-            for (let i = 0; i < 3; i++) {
-                const normalizedCard = normalizeCardName(visibleCards[i]);
-                container.children[i].src = `/static/images/${normalizedCard}.png`;
-                container.children[i].onerror = () => console.error(`Failed to load Flop card ${i}: ${normalizedCard}.png`);
-            }
-        } else if (stage === "Turn" && visibleCards.length >= 4) {
-            for (let i = 0; i < 4; i++) {
-                const normalizedCard = normalizeCardName(visibleCards[i]);
-                container.children[i].src = `/static/images/${normalizedCard}.png`;
-                container.children[i].onerror = () => console.error(`Failed to load Turn card ${i}: ${normalizedCard}.png`);
-            }
-        } else if (stage === "River" && visibleCards.length === 5) {
-            for (let i = 0; i < 5; i++) {
-                const normalizedCard = normalizeCardName(visibleCards[i]);
-                container.children[i].src = `/static/images/${normalizedCard}.png`;
-                container.children[i].onerror = () => console.error(`Failed to load River card ${i}: ${normalizedCard}.png`);
-            }
+            cardInner.appendChild(cardFront);
+            cardInner.appendChild(cardBack);
+            cardWrapper.appendChild(cardInner);
+            container.appendChild(cardWrapper);
         }
     }
+
+    const visibleCards = cards || [];
+    console.log("Community cards received:", visibleCards);
+
+    // Подсчитываем количество новых видимых карт
+    const newVisibleCardCount = visibleCards.filter(card => card).length;
+    let cardsToReveal = 0;
+
+    // Определяем, сколько новых карт нужно открыть
+    if (newVisibleCardCount > lastVisibleCardCount) {
+        cardsToReveal = newVisibleCardCount - lastVisibleCardCount;
+    }
+
+    // Обновляем карты
+    visibleCards.forEach((card, index) => {
+        if (card) {
+            const normalizedCard = normalizeCardName(card);
+            const cardWrapper = container.children[index];
+            const frontImg = cardWrapper.querySelector(".card-front img");
+            frontImg.src = `/static/images/${normalizedCard}.png`;
+            frontImg.alt = card;
+            frontImg.onerror = () => console.error(`Failed to load community card: ${normalizedCard}.png`);
+
+            // Применяем анимацию только для новых карт
+            if (index >= lastVisibleCardCount && index < newVisibleCardCount) {
+                setTimeout(() => {
+                    console.log(`Flipping community card ${index}: ${card}`);
+                    cardWrapper.classList.add("flipped");
+                    cardTurnSound.play().catch(error => {
+                        console.error("Error playing card turn sound:", error);
+                    });
+                }, (index - lastVisibleCardCount) * 300); // Задержка для последовательного переворота
+            } else {
+                // Для уже открытых карт просто показываем лицевую сторону
+                cardWrapper.querySelector(".card-inner").style.transform = "rotateY(180deg)";
+            }
+        }
+    });
+
+    lastVisibleCardCount = newVisibleCardCount;
+}
 
     function toggleButtons(enabled) {
         const buttons = ["bet-button", "call-pass-button", "fold-button", "all-in-button", "bet-amount"];

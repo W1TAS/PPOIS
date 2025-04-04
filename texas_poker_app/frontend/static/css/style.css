@@ -158,6 +158,22 @@ body {
     width: auto;
     max-width: 90vw;
     box-sizing: border-box;
+    display: flex; /* Добавляем flex */
+    flex-direction: column; /* Элементы выстраиваются вертикально */
+    align-items: center; /* Центрируем по горизонтали */
+    gap: 3vh; /* Отступ между элементами */
+}
+
+#community-cards {
+    margin: 0.5vh 0;
+    padding: 0.5vh;
+    border-radius: 0.4vh;
+    font-weight: bold;
+    display: flex; /* Для горизонтального выравнивания карт */
+    gap: 0.5vw; /* Отступ между картами */
+    justify-content: center; /* Центрируем карты */
+    position: relative;
+    top: -8vh
 }
 
 #player-info {
@@ -281,21 +297,39 @@ button:disabled {
     cursor: not-allowed;
 }
 
-#community-cards, #player-hand, #balance, #current-player {
+#player-hand, #balance, #current-player {
     margin: 0.5vh 0;
     padding: 0.5vh;
     border-radius: 0.4vh;
     font-weight: bold;
 }
 
-#stage, #pot {
+
+
+#pot{
     margin: 0.5vh 0;
     padding: 0.5vh;
     border-radius: 0.4vh;
-    font-weight: 700; /* Жирный шрифт */
-    font-size: 1.2vw; /* Увеличиваем размер */
-    color: #f5f5f5; /* Светлый цвет для контраста */
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); /* Добавляем тень */
+    font-weight: 700;
+    font-size: 1.2vw;
+    color: #f5f5f5;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    z-index: 2;
+    position: relative;
+    top: 4vh; /* Смещаем надпись о потах вверх */
+}
+
+#stage {
+    margin: 0.5vh 0;
+    padding: 0.5vh;
+    border-radius: 0.4vh;
+    font-weight: 700;
+    font-size: 1.2vw;
+    color: #f5f5f5;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    z-index: 2;
+    position: relative;
+    top: -8vh; /* Смещаем надпись о потах вверх */
 }
 
 .card-container {
