@@ -401,3 +401,55 @@ button:disabled {
     z-index: 10;
     text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
 }
+
+/* Стили для анимации переворота карты */
+.card-wrapper {
+    width: 4vw;
+    height: 5.6vw;
+    perspective: 1000px;
+    display: inline-block;
+    margin-right: 0.5vw;
+}
+
+.card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+    transform: rotateY(0deg); /* Изначально показываем тыльную сторону */
+}
+
+.card-front, .card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 0.2vw;
+}
+
+.card-front {
+    transform: rotateY(180deg); /* Лицевая сторона повёрнута на 180 градусов */
+}
+
+.card-back {
+    transform: rotateY(0deg); /* Тыльная сторона изначально видна */
+}
+
+.card-wrapper.flipped .card-inner {
+    transform: rotateY(180deg); /* При добавлении класса flipped показываем лицевую сторону */
+}
+
+.card-front img, .card-back img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 0.2vw;
+}
+
+@media (max-width: 768px) {
+    .card-wrapper {
+        width: 8vw;
+        height: 11.2vw;
+    }
+}
