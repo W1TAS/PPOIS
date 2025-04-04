@@ -184,10 +184,10 @@ body {
     bottom: 5vh;
     left: 50%;
     transform: translateX(-50%);
-    display: flex;
+    display: none;
     gap: 0.5vw;
     z-index: 3;
-    display: none;
+    /*display: none;*/
 }
 
 .player .card-container {
@@ -197,6 +197,10 @@ body {
     transform: translateX(-50%);
     display: flex;
     gap: 0.5vw;
+}
+
+.player.current-player .card-container {
+    bottom: 2vh; /* Поднимаем карты текущего игрока выше */
 }
 
 #balance {
@@ -405,44 +409,44 @@ button:disabled {
 /* Стили для анимации переворота карты */
 .card-wrapper {
     width: 4vw;
-    height: 5.6vw;
+    height: auto; /* Меняем на auto, чтобы соответствовать пропорциям изображения */
     perspective: 1000px;
     display: inline-block;
-    margin-right: 0.5vw;
+    margin-right: 0.5vw; /* Оставляем для единообразия с gap в .card-container */
 }
 
 .card-inner {
     position: relative;
     width: 100%;
-    height: 100%;
+    height: auto; /* Меняем на auto */
     transition: transform 0.6s;
     transform-style: preserve-3d;
-    transform: rotateY(0deg); /* Изначально показываем тыльную сторону */
+    transform: rotateY(0deg);
 }
 
 .card-front, .card-back {
     position: absolute;
     width: 100%;
-    height: 100%;
+    height: auto; /* Меняем на auto */
     backface-visibility: hidden;
     border-radius: 0.2vw;
 }
 
 .card-front {
-    transform: rotateY(180deg); /* Лицевая сторона повёрнута на 180 градусов */
+    transform: rotateY(180deg);
 }
 
 .card-back {
-    transform: rotateY(0deg); /* Тыльная сторона изначально видна */
+    transform: rotateY(0deg);
 }
 
 .card-wrapper.flipped .card-inner {
-    transform: rotateY(180deg); /* При добавлении класса flipped показываем лицевую сторону */
+    transform: rotateY(180deg);
 }
 
 .card-front img, .card-back img {
-    width: 100%;
-    height: 100%;
+    max-width: 4vw; /* Приводим к тому же значению, что у .card-container img */
+    height: auto;
     object-fit: contain;
     border-radius: 0.2vw;
 }
