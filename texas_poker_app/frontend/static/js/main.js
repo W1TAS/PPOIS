@@ -661,13 +661,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Добавляем тыльную сторону только если будет анимация
             if (isNewGame && stage === "preflop") {
-                const cardBack = document.createElement("div");
-                cardBack.className = "card-back";
-                const backImg = document.createElement("img");
-                backImg.src = "/static/images/card_back_black.png";
-                backImg.alt = "Card back";
-                cardBack.appendChild(backImg);
-                cardInner.appendChild(cardBack);
+                console.log(`Animating card ${index}: ${card}, isNewGame=${isNewGame}, stage=${stage}`);
+                setTimeout(() => {
+                    console.log(`Flipping card ${index}: ${card}`);
+                    if (cardWrapper) {
+                        cardWrapper.classList.add("flipped");
+                        console.log("Flipped class added");
+                        cardTurnSound.play().catch(error => {
+                            console.error("Sound error:", error);
+                        });
+                    } else {
+                        console.error("cardWrapper not found");
+                    }
+                }, index * 300);
+            } else {
+                console.log(`No animation for card ${index}: stage=${stage}`);
+                cardInner.style.transform = "rotateY(180deg)"; // Без анимации
             }
 
             cardInner.appendChild(cardFront);
